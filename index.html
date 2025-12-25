@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="title">電腦鼠迷宮設定器</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="top-bar">
+        <select id="theme-select" class="theme-select" onchange="toggleTheme(this.value)">
+            <option value="auto">🌗 Auto</option>
+            <option value="light">☀️ Light</option>
+            <option value="dark">🌙 Dark</option>
+        </select>
+        <select id="lang-select" class="lang-select" onchange="changeLanguage(this.value)">
+            <option value="zh-TW">🇹🇼 繁體中文</option>
+            <option value="en">🇺🇸 English</option>
+            <option value="ja">🇯🇵 日本語</option>
+        </select>
+    </div>
+
+    <h1 data-i18n="title">電腦鼠迷宮設定器</h1>
+
+    <div class="layout-wrapper">
+        <div class="y-axis" id="y-axis"></div>
+        <div id="maze-grid"></div>
+        <div class="x-axis-wrapper" id="x-axis"></div>
+    </div>
+
+    <div class="info-container">
+        <div class="status-text" id="status-text" data-i18n="status_loading">Loading...</div>
+    </div>
+
+    <div class="controls">
+        <div class="input-group">
+            <button class="file-btn" onclick="downloadMap()" data-i18n="btn_save">💾 儲存</button>
+            <button class="file-btn" onclick="document.getElementById('file-input').click()" data-i18n="btn_load">📂 讀取</button>
+            <input type="file" id="file-input" style="display: none;" accept=".json" onchange="loadMap(this)">
+        </div>
+
+        <div class="input-group">
+            <label data-i18n="lbl_w">W:</label>
+            <input type="number" id="input-w" value="16" min="4" max="64">
+            <label data-i18n="lbl_h">H:</label>
+            <input type="number" id="input-h" value="16" min="4" max="64">
+            <button class="primary" onclick="resizeMaze()" data-i18n="btn_reset">重置</button>
+        </div>
+
+        <div class="input-group">
+            <label title="Zoom" data-i18n="lbl_zoom">🔎</label>
+            <input type="range" id="zoom-slider" min="10" max="60" value="30" oninput="updateZoom(this.value)">
+        </div>
+        
+        <div style="display:flex; flex-direction:column; align-items:center; margin: 0 5px;">
+            <button onclick="handleGenerate()" data-i18n="btn_generate">隨機生成</button>
+            <label style="font-size:11px; cursor:pointer; margin-top:2px;">
+                <input type="checkbox" id="chk-keep" checked> <span data-i18n="chk_keep">保留現有</span>
+            </label>
+            <label style="font-size:11px; cursor:pointer; margin-top:2px;">
+                <input type="checkbox" id="chk-show-weights" onchange="renderGrid()"> <span data-i18n="chk_weight">顯示權重</span>
+            </label>
+        </div>
+        
+        <div class="input-group">
+            <button onclick="fillMazeWalls()" data-i18n="btn_fill">重置為牆</button>
+            <button class="danger" onclick="clearMazeEmpty()" data-i18n="btn_clear">全部拆除</button>
+        </div>
+        
+        <div style="width: 1px; height:20px; background: var(--border-color); margin: 0 5px;"></div>
+
+        <div class="input-group">
+            <select id="algo-select" style="padding: 6px;" onchange="updateAlgoUI()">
+                <option value="flood" data-i18n="algo_flood">🌊 洪水</option>
+                <option value="astar" data-i18n="algo_astar">⭐ A*</option>
+                <option value="dijkstra" data-i18n="algo_dijkstra">🔍 Dijkstra</option>
+                <option value="manhattan" data-i18n="algo_manhattan">🚀 曼哈頓</option>
+                <option value="left" data-i18n="algo_left">⬅️ 左手</option>
+                <option value="right" data-i18n="algo_right">➡️ 右手</option>
+            </select>
+            <button class="primary" onclick="runSelectedAlgo()" data-i18n="btn_run">執行</button>
+            <button onclick="clearPath()" data-i18n="btn_clear_path">❌ 清除路徑</button>
+        </div>
+
+        <div style="width: 1px; height:20px; background: var(--border-color); margin: 0 5px;"></div>
+
+        <button id="mode-start" class="mode-btn active" onclick="setMode('start')" data-i18n="btn_start">設起點</button>
+        <button id="mode-goal" class="mode-btn" onclick="setMode('goal')" data-i18n="btn_goal">設終點</button>
+        <button id="mode-wall" class="mode-btn" onclick="setMode('wall')" data-i18n="btn_wall">編輯牆</button>
+    </div>
+
+    <script src="js/maze_core.js"></script>
+    <script src="js/i18n.js"></script> <script src="js/algos/wall_follower.js"></script>
+    <script src="js/algos/flood_fill.js"></script>
+    <script src="js/algos/dijkstra.js"></script>
+    <script src="js/algos/astar.js"></script>
+    <script src="js/algos/manhattan.js"></script>
+    <script src="js/ui_control.js"></script>
+</body>
+</html>
