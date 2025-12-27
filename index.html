@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title data-i18n="title">電腦鼠迷宮設定器</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -36,8 +36,14 @@
     <div class="controls">
         <div class="input-group">
             <button class="file-btn" onclick="downloadMap()" data-i18n="btn_save">💾 儲存</button>
-            <button class="file-btn" onclick="document.getElementById('file-input').click()" data-i18n="btn_load">📂 讀取</button>
+            <button class="file-btn" onclick="document.getElementById('file-input').click()" data-i18n="btn_load">📂 上傳</button>
             <input type="file" id="file-input" style="display: none;" accept=".json" onchange="loadMap(this)">
+        </div>
+
+        <div class="input-group">
+            <select id="map-select" style="max-width: 150px;"></select>
+            <button class="primary" onclick="loadSelectedMap()" data-i18n="btn_load_map">📥 載入</button>
+            <!-- <button onclick="showImageImportModal()" style="margin-left:5px;">📷 圖片轉地圖</button> -->
         </div>
 
         <div class="input-group">
@@ -55,9 +61,15 @@
         
         <div style="display:flex; flex-direction:column; align-items:center; margin: 0 5px;">
             <button onclick="handleGenerate()" data-i18n="btn_generate">隨機生成</button>
+            
             <label style="font-size:11px; cursor:pointer; margin-top:2px;">
                 <input type="checkbox" id="chk-keep" checked> <span data-i18n="chk_keep">保留現有</span>
             </label>
+            
+            <label style="font-size:11px; cursor:pointer; margin-top:2px; color: rgb(102, 0, 255);">
+                <input type="checkbox" id="chk-loops"> <span data-i18n="chk_loops">多路徑 (迴圈)</span>
+            </label>
+
             <label style="font-size:11px; cursor:pointer; margin-top:2px;">
                 <input type="checkbox" id="chk-show-weights" onchange="renderGrid()"> <span data-i18n="chk_weight">顯示權重</span>
             </label>
@@ -80,22 +92,27 @@
                 <option value="right" data-i18n="algo_right">➡️ 右手</option>
             </select>
             <button class="primary" onclick="runSelectedAlgo()" data-i18n="btn_run">執行</button>
+            <!-- <button onclick="findSecondPath()" style="font-size:12px;">🔀 找第二路徑</button> -->
             <button onclick="clearPath()" data-i18n="btn_clear_path">❌ 清除路徑</button>
         </div>
 
-        <div style="width: 1px; height:20px; background: var(--border-color); margin: 0 5px;"></div>
+        <!-- <div style="width: 1px; height:20px; background: var(--border-color); margin: 0 5px;"></div> -->
 
+        <button id="mode-wall" class="mode-btn" onclick="setMode('wall')" data-i18n="btn_wall">編輯牆</button>
         <button id="mode-start" class="mode-btn active" onclick="setMode('start')" data-i18n="btn_start">設起點</button>
         <button id="mode-goal" class="mode-btn" onclick="setMode('goal')" data-i18n="btn_goal">設終點</button>
-        <button id="mode-wall" class="mode-btn" onclick="setMode('wall')" data-i18n="btn_wall">編輯牆</button>
     </div>
 
     <script src="js/maze_core.js"></script>
-    <script src="js/i18n.js"></script> <script src="js/algos/wall_follower.js"></script>
+    <script src="js/i18n.js"></script>
+    <script src="js/maps_index.js"></script>
+    <!-- <script src="js/image_importer.js"></script>  -->
+    <script src="js/algos/wall_follower.js"></script>
     <script src="js/algos/flood_fill.js"></script>
     <script src="js/algos/dijkstra.js"></script>
     <script src="js/algos/astar.js"></script>
     <script src="js/algos/manhattan.js"></script>
+
     <script src="js/ui_control.js"></script>
 </body>
 </html>

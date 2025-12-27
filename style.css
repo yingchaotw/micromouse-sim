@@ -39,7 +39,7 @@
         --border-color: #444444;
         --border-light: #333333;
         
-        --wall-color: #ffffff;      /* 牆壁變白 */
+        --wall-color: #ff4d4d;      /* 牆壁變白 */
         --grid-line: #2c2c2c;       /* 網格線變深灰 */
         
         --btn-bg: #2d2d2d;
@@ -63,7 +63,7 @@
     --text-sub: #a0a0a0;
     --border-color: #444444;
     --border-light: #333333;
-    --wall-color: #ffffff;
+    --wall-color: #ff4d4d;
     --grid-line: #2c2c2c;
     --btn-bg: #2d2d2d;
     --btn-hover: #3d3d3d;
@@ -242,7 +242,7 @@ button.danger:hover { background-color: var(--danger); color: white; }
 
 .is-start { background-color: var(--start-bg) !important; }
 .is-goal { background-color: var(--goal-bg) !important; }
-.is-path { background-color: var(--path-bg) !important; }
+/* .is-path { background-color: var(--path-bg) !important; } */
 
 /* 權重文字 */
 .cell-weight {
@@ -293,3 +293,194 @@ button.danger:hover { background-color: var(--danger); color: white; }
     content: ''; position: absolute; height: 8px; width: 1px; background: var(--text-main); top: -2px;
 }
 .scale-bar::before { left: 0; } .scale-bar::after { right: 0; }
+
+/* --- 手機版響應式設計 (Mobile Responsive) --- */
+@media (max-width: 768px) {
+    
+    /* 1. 全局調整：字體稍微放大，減少邊距 */
+    body {
+        padding: 10px;
+        padding-bottom: 100px; /* 底部留更多空間給手指滑動 */
+    }
+
+    /* 2. 頂部工具列：讓選單自動換行，不要擠在一起 */
+    .top-bar {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    .theme-select, .lang-select {
+        flex: 1; /* 讓按鈕佔滿寬度 */
+        margin: 2px;
+        font-size: 14px; /* 手機字體大一點 */
+        padding: 8px;
+    }
+
+    /* 3. 控制面板：改成垂直排列，按鈕加大 */
+    .controls {
+        flex-direction: column; /* 垂直堆疊 */
+        align-items: stretch;   /* 寬度拉滿 */
+        gap: 10px;
+        padding: 15px;
+        margin-top: 15px;
+    }
+
+    .input-group {
+        flex-wrap: wrap;
+        justify-content: space-between;
+        border-right: none; /* 移除分隔線 */
+        border-bottom: 1px solid var(--border-light); /* 改成底線分隔 */
+        padding-bottom: 10px;
+        padding-right: 0;
+    }
+
+    /* 隱藏沒用的裝飾線 */
+    .controls > div[style*="width: 1px"] {
+        display: none;
+    }
+
+    /* 按鈕變大，方便手指點擊 */
+    button {
+        padding: 12px;
+        font-size: 16px;
+        justify-content: center;
+        flex: 1; /* 按鈕平均分配寬度 */
+    }
+
+    /* 4. 迷宮容器：關鍵！讓迷宮可以「內部捲動」 */
+    /* 這樣迷宮再大也不會撐破手機畫面 */
+    .layout-wrapper {
+        display: block; /* 改成區塊顯示，方便 Scroll */
+        overflow: auto; /* 超出範圍時出現捲軸 */
+        max-width: 100%; /* 限制最大寬度為螢幕寬度 */
+        
+        /* 讓捲動更滑順 */
+        -webkit-overflow-scrolling: touch; 
+        
+        /* 設定固定高度，讓迷宮在一個框框內捲動，或者拿掉這行讓它自然長高 */
+        /* height: 60vh; */ 
+        
+        position: relative;
+    }
+
+    /* 修正座標軸：在手機上固定位置比較好閱讀 (Sticky) */
+    .y-axis {
+        position: absolute;
+        left: 0;
+        top: 20px; /* 避開 X 軸 */
+        background: var(--bg-panel);
+        z-index: 20;
+        box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+        padding-left: 5px;
+    }
+
+    .x-axis-wrapper {
+        /* 手機上 X 軸可能太擠，可以考慮隱藏或縮小 */
+        margin-bottom: 5px;
+    }
+
+    /* 迷宮本體加上一點 margin 避免被 Sticky 軸擋住 */
+    #maze-grid {
+        margin-left: 35px; /* 留位置給 Y 軸 */
+    }
+
+    /* 5. 底部資訊列：堆疊顯示 */
+    .info-container {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+        border-radius: 8px;
+    }
+    .scale-legend {
+        padding-left: 0;
+        border-left: none;
+        border-top: 1px solid var(--border-color);
+        width: 100%;
+        padding-top: 5px;
+        margin-top: 5px;
+    }
+
+    /* 6. 輸入框調整 */
+    input[type="number"] {
+        width: 60px;
+        font-size: 16px;
+        padding: 8px;
+    }
+}
+
+/* --- ★★★ 強制修復座標軸文字 (請取代原本的設定) ★★★ --- */
+.y-axis div, 
+.x-axis-wrapper div {
+    /* 確保文字垂直水平置中 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    /* 強制設定顏色 (深灰)，並加上 !important 確保不被覆蓋 */
+    color: #666666 !important; 
+    font-weight: bold;
+    font-size: 12px;
+    
+    /* ★ 關鍵修改：讓文字浮在最上層 ★ */
+    position: relative; 
+    z-index: 100; 
+}
+
+/* 針對暗黑模式，把文字改成淺灰 */
+@media (prefers-color-scheme: dark) {
+    .y-axis div, 
+    .x-axis-wrapper div {
+        color: #cccccc !important;
+    }
+}
+[data-theme="dark"] .y-axis div, 
+[data-theme="dark"] .x-axis-wrapper div {
+    color: #cccccc !important;
+}
+
+/* 新增：讓 SVG 覆蓋在迷宮上 */
+.maze-svg-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none; /* 讓滑鼠點擊可以穿透 SVG 點到下面的格子 */
+    z-index: 10; /* 浮在格子上面，但文字(權重)可能要更高 */
+}
+
+/* 螢光筆線條樣式 */
+.path-line {
+    fill: none;
+    /* stroke: ...;  <-- 移除這裡的顏色，改由 JS 設定 */
+    stroke-width: 3px;
+    vector-effect: non-scaling-stroke;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0.9;
+    filter: drop-shadow(0px 1px 2px rgba(0,0,0,0.3));
+    z-index: 10;
+}
+
+/* 次佳路徑 (虛線) */
+.path-dashed {
+    fill: none;
+    /* stroke: ...; <-- 移除顏色 */
+    stroke-width: 2px;
+    vector-effect: non-scaling-stroke;
+    stroke-dasharray: 5, 5; /* 虛線效果 */
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0.7;
+    z-index: 9;
+}
+
+/* 狀態列文字顏色 (對應 JS 裡的設定) */
+.text-dir-n { color: #E91E63; font-weight: bold; } /* 北: 玫紅 */
+.text-dir-e { color: #2196F3; font-weight: bold; } /* 東: 藍 */
+.text-dir-s { color: #4CAF50; font-weight: bold; } /* 南: 綠 */
+.text-dir-w { color: #FF9800; font-weight: bold; } /* 西: 橘 */
+
+/* 確保權重文字浮在螢光筆上面 (原本已有，確認一下) */
+.cell-weight {
+    z-index: 20 !important; 
+}

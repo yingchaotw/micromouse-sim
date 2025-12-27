@@ -37,13 +37,43 @@ function getLogicalPos(index) {
     return { x: index % WIDTH, y: HEIGHT - 1 - Math.floor(index / WIDTH) };
 }
 
-// 核心規則：強制起點朝北 (Core Rules)
+// 核心規則：強制起點規則 (強化版：同步修正鄰居牆壁)
 function enforceStartRule() {
-    const idx = getIndex(startPos.x, startPos.y);
+    if (!startPos) return;
+    
+    const x = startPos.x;
+    const y = startPos.y;
+    const idx = getIndex(x, y);
+
+    // 1. 強制起點本身為 U 型 (只留北方開口) -> 數值 14 (西8 + 南4 + 東2)
     mazeData[idx] = 14; 
-    if (startPos.y < HEIGHT - 1) { 
-        const northNeighborIdx = getIndex(startPos.x, startPos.y + 1);
-        mazeData[northNeighborIdx] &= ~4; 
+
+    // 2. 修正北方鄰居 (必須打通)
+    // 起點北方沒牆(0)，所以鄰居的南方也不能有牆
+    if (y < HEIGHT - 1) {
+        const nIdx = getIndex(x, y + 1);
+        mazeData[nIdx] &= ~4; // 移除鄰居的南牆 (Bit 4)
+    }
+
+    // 3. 修正東方鄰居 (必須有牆)
+    // 起點東方有牆(2)，所以鄰居的西方也必須有牆
+    if (x < WIDTH - 1) {
+        const eIdx = getIndex(x + 1, y);
+        mazeData[eIdx] |= 8; // 強制加上鄰居的西牆 (Bit 8)
+    }
+
+    // 4. 修正西方鄰居 (必須有牆)
+    // 起點西方有牆(8)，所以鄰居的東方也必須有牆
+    if (x > 0) {
+        const wIdx = getIndex(x - 1, y);
+        mazeData[wIdx] |= 2; // 強制加上鄰居的東牆 (Bit 2)
+    }
+
+    // 5. 修正南方鄰居 (必須有牆)
+    // 起點南方有牆(4)，所以鄰居的北方也必須有牆
+    if (y > 0) {
+        const sIdx = getIndex(x, y - 1);
+        mazeData[sIdx] |= 1; // 強制加上鄰居的北牆 (Bit 1)
     }
 }
 
@@ -54,7 +84,9 @@ function generateRandomMaze() {
         currentSolutionPath = []; 
     }
 
-    const keep = document.getElementById('chk-keep').checked;
+    const keep = document.getElementById('chk-keep') ? document.getElementById('chk-keep').checked : false;
+    // ★ 取得使用者是否想要多路徑
+    const allowLoops = document.getElementById('chk-loops') ? document.getElementById('chk-loops').checked : false;
     
     // 1. 預處理
     if (keep) {
@@ -68,8 +100,6 @@ function generateRandomMaze() {
     }
     
     enforceStartRule();
-
-
 
     // 2. 初始化 Stack 與 Visited
     const stack = []; 
@@ -93,7 +123,7 @@ function generateRandomMaze() {
         seeds.forEach(s => stack.push(s));
     }
 
-    // 3. 執行 Backtracking
+    // 3. 執行 Backtracking (生成主幹)
     while (stack.length > 0) {
         const current = stack[stack.length - 1];
         const x = current.x;
@@ -102,7 +132,6 @@ function generateRandomMaze() {
 
         let dirs = [[0, 1, 1, 4], [1, 0, 2, 8], [0, -1, 4, 1], [-1, 0, 8, 2]];
 
-        // 起點保護機制
         if (x === startPos.x && y === startPos.y) dirs = dirs.filter(d => d[1] === 1);
 
         for (let i = dirs.length - 1; i > 0; i--) {
@@ -129,16 +158,122 @@ function generateRandomMaze() {
         if (!carved) stack.pop();
     }
     
-    enforceStartRule();
+    // ★★★ 4. 新增：如果是多路徑模式，執行「去除死路」邏輯 ★★★
+    if (allowLoops) {
+        // 參數 0.5 代表去除 50% 的死路 (可以自己調整 0.1 ~ 1.0)
+        // 這樣就會產生很多迴圈
+        removeDeadEnds(0.5);
+    }
+
+    // ★★★ 加入這兩行規則強制執行 ★★★
+    enforceStartRule(); // 強制起點 U 型且打通鄰居
+    enforceGoalRule();  // ★ 新增：強制終點內部無牆 (打通成房間)
 
     // 更新 UI
     if (typeof renderGrid === 'function') renderGrid();
     const statusText = document.getElementById('status-text');
     
-    // ▼▼▼ 修正：使用翻譯函數 t() ▼▼▼
-    // 注意：確保 i18n.js 有被載入，且 runtime 時 t() 函式已存在
     if (statusText && typeof t === 'function') {
         statusText.innerText = t('status_generated');
     }
-    
+}
+
+
+// 核心規則：強制終點內部沒有牆壁 (形成一個大房間)
+function enforceGoalRule() {
+    if (goalPositions.size === 0) return;
+
+    // 遍歷每一個終點格子
+    goalPositions.forEach(posStr => {
+        const [x, y] = posStr.split(',').map(Number);
+        const idx = getIndex(x, y);
+
+        // 檢查四周的鄰居：如果鄰居也是終點的一部分，就打通牆壁
+        
+        // 北方鄰居
+        if (y < HEIGHT - 1 && goalPositions.has(`${x},${y+1}`)) {
+            mazeData[idx] &= ~1; // 拆掉自己的北牆
+            const nIdx = getIndex(x, y + 1);
+            mazeData[nIdx] &= ~4; // 拆掉鄰居的南牆
+        }
+        
+        // 東方鄰居
+        if (x < WIDTH - 1 && goalPositions.has(`${x+1},${y}`)) {
+            mazeData[idx] &= ~2; // 拆掉自己的東牆
+            const eIdx = getIndex(x + 1, y);
+            mazeData[eIdx] &= ~8; // 拆掉鄰居的西牆
+        }
+        
+        // 南方鄰居
+        if (y > 0 && goalPositions.has(`${x},${y-1}`)) {
+            mazeData[idx] &= ~4; // 拆掉自己的南牆
+            const sIdx = getIndex(x, y - 1);
+            mazeData[sIdx] &= ~1; // 拆掉鄰居的北牆
+        }
+        
+        // 西方鄰居
+        if (x > 0 && goalPositions.has(`${x-1},${y}`)) {
+            mazeData[idx] &= ~8; // 拆掉自己的西牆
+            const wIdx = getIndex(x - 1, y);
+            mazeData[wIdx] &= ~2; // 拆掉鄰居的東牆
+        }
+    });
+
+    // 確保至少有一個入口：
+    // 隨機生成演算法本身就會保證迷宮連通，所以一定會有路徑通往終點區域。
+    // 如果你有開啟「多路徑 (迴圈)」模式，入口甚至會不只一個。
+    // 這個函數主要負責把終點區域內部的牆壁清空，形成一個開放空間。
+}
+
+
+// ★★★ 輔助函數：去除死路 (製造迴圈) ★★★
+function removeDeadEnds(percentage) {
+    // 找出所有的死路 (只有 3 面牆壁的格子)
+    let deadEnds = [];
+    for (let i = 0; i < WIDTH * HEIGHT; i++) {
+        // 計算牆壁數量 (檢查 1, 2, 4, 8 bits)
+        let wallCount = 0;
+        if (mazeData[i] & 1) wallCount++;
+        if (mazeData[i] & 2) wallCount++;
+        if (mazeData[i] & 4) wallCount++;
+        if (mazeData[i] & 8) wallCount++;
+
+        // 3 面牆 = 死路 (Dead End)。排除起點，避免起點被打通
+        const pos = getLogicalPos(i);
+        if (wallCount === 3 && !(pos.x === startPos.x && pos.y === startPos.y)) {
+            deadEnds.push(i);
+        }
+    }
+
+    // 隨機打通其中一部分
+    deadEnds.forEach(idx => {
+        if (Math.random() > percentage) return; // 依照機率跳過
+
+        const pos = getLogicalPos(idx);
+        const x = pos.x; 
+        const y = pos.y;
+
+        // 尋找可以打通的鄰居 (原本有牆，且鄰居在邊界內)
+        const candidates = [];
+        // 北
+        if ((mazeData[idx] & 1) && y + 1 < HEIGHT) candidates.push({ bit: 1, opBit: 4, nx: x, ny: y+1 });
+        // 東
+        if ((mazeData[idx] & 2) && x + 1 < WIDTH)  candidates.push({ bit: 2, opBit: 8, nx: x+1, ny: y });
+        // 南
+        if ((mazeData[idx] & 4) && y - 1 >= 0)     candidates.push({ bit: 4, opBit: 1, nx: x, ny: y-1 });
+        // 西
+        if ((mazeData[idx] & 8) && x - 1 >= 0)     candidates.push({ bit: 8, opBit: 2, nx: x-1, ny: y });
+
+        if (candidates.length > 0) {
+            // 隨機選一道牆打掉
+            const target = candidates[Math.floor(Math.random() * candidates.length)];
+            
+            // 拆牆
+            mazeData[idx] &= ~target.bit;
+            
+            // 拆鄰居的牆
+            const nIdx = getIndex(target.nx, target.ny);
+            mazeData[nIdx] &= ~target.opBit;
+        }
+    });
 }

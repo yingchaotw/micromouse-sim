@@ -17,28 +17,29 @@ A lightweight, web-based simulator for **Micromouse** maze design and algorithm 
 
 ### 🛠 Maze Editing
 - **Dynamic Sizing:** Support for standard 16x16 mazes or custom sizes (up to 64x64).
-- **Interactive Editing:** Click to toggle walls. Click corners to toggle specific wall segments.
+- **Interactive Editing:** Click to toggle walls. Smart corner-click detection for precise wall placement.
 - **Start & Goal:** Customizable start position and multiple goal cells (supports standard 2x2 central goal).
+- **🏆 Preset Maps:** Includes classic contest mazes for benchmarking.
 - **File Support:** Save (`.json`) and Load map data instantly.
 
 ### 🧠 Pathfinding Algorithms
-Includes standard and experimental algorithms for Micromouse:
-- **🌊 Flood Fill (BFS):** Finds the guaranteed shortest path (Classic Micromouse algorithm).
+Includes standard algorithms with **Robust Wall Checking** (prevents diagonal wall-clipping):
+- **🌊 Flood Fill (BFS):** Finds the guaranteed shortest path. Classic Micromouse algorithm.
 - **⭐ A* Search:** Heuristic-based search using Manhattan distance.
 - **🔍 Dijkstra:** Uniform cost search.
-- **🚀 Manhattan (Greedy):** Fast but non-optimal greedy search.
+- **🚀 Manhattan (Greedy):** Fast greedy search.
 - **⬅️ / ➡️ Wall Follower:** Left-Hand and Right-Hand rules.
 
 ### 📊 Analysis & Visualization
-- **Multi-Route Analysis:** Calculates steps and turns for North, East, South, and West approaches (Japanese competition style).
-- **Path Statistics:** Displays total steps, number of turns, and longest straight line.
-- **Weight Heatmap:** Visualizes the distance values (contour map) for Flood Fill/BFS.
-- **Zoom & Scale:** Adjustable cell size for different screen resolutions.
+- **🧭 Multi-Route Analysis:** Calculates steps and turns for North, East, South, and West approaches.
+- **🥈 Second Best Path:** Automatically calculates and displays an alternative route (dashed line) to compare strategies.
+- **🎨 Smart Visualization:** Paths are rendered with smooth SVG Bezier curves and color-coded by direction (North=Red, East=Blue, etc.).
+- **Weight Heatmap:** Visualizes distance values on each cell.
 
 ### 🎨 UI/UX
 - **Dark/Light Theme:** Automatically detects system preference or switch manually.
 - **Multi-Language Support:** English (EN), Traditional Chinese (繁體中文), and Japanese (日本語).
-- **Responsive Design:** Control panel adapts to screen layout.
+- **📱 Responsive Design:** Optimized for both desktop and mobile touch controls.
 
 ---
 

@@ -1,72 +1,75 @@
 // js/algos/manhattan.js
 
 function solveManhattanGreedy() {
-    // 僅基於曼哈頓距離做決策
-    function getDistanceToGoal(x, y) {
+    // 啟發函數：計算曼哈頓距離
+    function getDistanceToGoal(idx) {
+        const pos = getLogicalPos(idx);
         let minH = Infinity;
         goalPositions.forEach(gStr => {
             const [gx, gy] = gStr.split(',').map(Number);
-            const h = Math.abs(x - gx) + Math.abs(y - gy);
+            const h = Math.abs(pos.x - gx) + Math.abs(pos.y - gy);
             if (h < minH) minH = h;
         });
         return minH;
     }
 
-    const path = [];
-    let curr = { x: startPos.x, y: startPos.y };
-    path.push({...curr});
+    // 初始化
+    const startIdx = getIndex(startPos.x, startPos.y);
+    const parentMap = new Array(WIDTH * HEIGHT).fill(null);
+    const visited = new Array(WIDTH * HEIGHT).fill(false);
     
-    const visited = new Set();
-    visited.add(`${curr.x},${curr.y}`);
+    // Priority Queue (OpenSet)，存放 {idx, h}
+    // 這裡我們只看 h (距離終點的估算值)，不看 g (已走步數)
+    const openSet = [{ idx: startIdx, h: getDistanceToGoal(startIdx) }];
     
-    // 為了視覺化，我們把距離填入 map
+    // 視覺化用的熱力圖
     const heatMap = new Array(WIDTH * HEIGHT).fill(Infinity);
-    for(let i=0; i<WIDTH*HEIGHT; i++) {
-        const p = getLogicalPos(i);
-        heatMap[i] = getDistanceToGoal(p.x, p.y);
-    }
     lastFloodDistMap = heatMap;
 
-    // 簡單的防死循環限制
-    for(let step=0; step < WIDTH*HEIGHT*2; step++) {
-        if (goalPositions.has(`${curr.x},${curr.y}`)) return path;
+    while (openSet.length > 0) {
+        // 1. 取出 h 最小的節點 (貪心)
+        openSet.sort((a, b) => a.h - b.h);
+        const current = openSet.shift();
+        const uIdx = current.idx;
 
-        // 檢查四周，選擇「距離終點最近」且「沒牆壁」且「沒走過」的格子
-        let bestNext = null;
-        let minDist = Infinity;
+        if (visited[uIdx]) continue;
+        visited[uIdx] = true;
 
-        // 這裡會嘗試找最佳解，但如果走進死巷，貪心法通常需要配合 Stack (Backtracking)
-        // 為了展示曼哈頓法則的特性，我們用一個簡單的 Priority 選擇
-        
-        const candidates = [];
+        const uPos = getLogicalPos(uIdx);
+        heatMap[uIdx] = current.h; // 紀錄距離供顯示
+
+        // 到達終點
+        if (goalPositions.has(`${uPos.x},${uPos.y}`)) {
+            const path = [];
+            let temp = uIdx;
+            while (temp !== null) {
+                path.push(getLogicalPos(temp));
+                temp = parentMap[temp];
+            }
+            return path.reverse();
+        }
+
+        // 2. 檢查鄰居
         for (let i = 0; i < 4; i++) {
-            if (isWall(curr.x, curr.y, i)) continue;
+            // ★★★ 關鍵：嚴格檢查牆壁 ★★★
+            if (isWall(uPos.x, uPos.y, i)) continue;
+
+            const nx = uPos.x + DIRS[i].dx;
+            const ny = uPos.y + DIRS[i].dy;
             
-            const nx = curr.x + DIRS[i].dx;
-            const ny = curr.y + DIRS[i].dy;
-            const key = `${nx},${ny}`;
-            
-            if (!visited.has(key)) {
-                const dist = getDistanceToGoal(nx, ny);
-                candidates.push({ x: nx, y: ny, dist: dist });
+            // 邊界防呆 (雖然 isWall 應該擋住了，但多一層保險)
+            if (nx < 0 || nx >= WIDTH || ny < 0 || ny >= HEIGHT) continue;
+
+            const vIdx = getIndex(nx, ny);
+
+            if (!visited[vIdx]) {
+                parentMap[vIdx] = uIdx;
+                const h = getDistanceToGoal(vIdx);
+                // 加入佇列，讓它下一輪跟其他候選人比拼
+                openSet.push({ idx: vIdx, h: h });
             }
         }
-
-        if (candidates.length > 0) {
-            // 貪心：選距離最小的
-            candidates.sort((a, b) => a.dist - b.dist);
-            bestNext = candidates[0];
-            
-            visited.add(`${bestNext.x},${bestNext.y}`);
-            curr = { x: bestNext.x, y: bestNext.y };
-            path.push({...curr});
-        } else {
-            // 貪心法走進死胡同了，這裡簡單處理：停止
-            // (真正的 Micromouse 會有更複雜的修正，但這裡展示純貪心)
-            console.log("貪心法走進死巷，停止搜尋");
-            break;
-        }
     }
-    
-    return path;
+
+    return []; // 無解
 }
