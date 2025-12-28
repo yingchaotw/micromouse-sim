@@ -27,20 +27,18 @@ function init() {
     // 初始化地圖選單
     initMapList();
 
-    // 1. 先設定好尺寸 (這時候會是全牆壁)
     resizeMaze();
-
-    // 2. ★★★ 馬上清空內部，只留外牆 ★★★
     clearMazeEmpty();
 
-    // 3. ★★★ 更新狀態文字，移除 "Loading..." ★★★
     if (statusText && typeof t === 'function') {
         statusText.innerText = t('status_ready');
     }
     
     updateAlgoUI();
-}
 
+    // ★★★ 新增這一行：啟動滾輪縮放功能 ★★★
+    initWheelZoom(); 
+}
 
 // ★★★ 判斷路徑主要方向與資訊 ★★★
 function getPathAnalysisInfo(path) {
@@ -143,28 +141,31 @@ function loadSelectedMap() {
     const filename = select.value;
 
     if (!filename) {
-        alert(t('msg_select_map'));
+        alert(typeof t === 'function' ? t('msg_select_map') : "Please select a map!");
         return;
     }
 
-    // 假設你的 json 檔是放在 maps 資料夾下
     const filePath = `maps/${filename}`; 
 
-    statusText.innerText = t('status_loading');
+    statusText.innerText = typeof t === 'function' ? t('status_loading') : "Loading...";
 
     fetch(filePath)
         .then(response => {
-            if (!response.ok) throw new Error("HTTP error " + response.status);
+            // ★★★ 修改：如果是 404 (找不到檔案)，明確丟出錯誤 ★★★
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status} - File not found: ${filename}`);
+            }
             return response.json();
         })
         .then(data => {
             applyMapData(data); 
-            statusText.innerText = t('msg_map_loaded') + ` (${filename})`;
+            statusText.innerText = (typeof t === 'function' ? t('msg_map_loaded') : "Loaded") + ` (${filename})`;
         })
         .catch(err => {
             console.error(err);
-            alert(t('msg_map_error'));
-            statusText.innerText = "Error.";
+            // ★★★ 修改：顯示具體錯誤訊息 ★★★
+            alert((typeof t === 'function' ? t('msg_map_error') : "Load Failed") + "\n" + err.message);
+            statusText.innerText = "Error: " + err.message;
         });
 }
 
@@ -283,6 +284,12 @@ function renderGrid() {
         domGrid.classList.remove('showing-weights');
     }
 
+    // ★★★ 新增：判斷某個座標是否為特殊格子 (起點或終點) 的輔助函式 ★★★
+    const isSpecialCell = (tx, ty) => {
+        if (tx === startPos.x && ty === startPos.y) return true;
+        return goalPositions.has(`${tx},${ty}`);
+    };
+    
     for (let i = 0; i < mazeData.length; i++) {
         const pos = getLogicalPos(i);
         const cell = document.createElement('div');
@@ -290,15 +297,43 @@ function renderGrid() {
         cell.setAttribute('data-coord', `(${pos.x}, ${pos.y})`);
 
         const val = mazeData[i];
-        if (val & 1) cell.classList.add('wall-n');
-        if (val & 8) cell.classList.add('wall-w');
-        if ((val & 2) && pos.x === WIDTH - 1) cell.classList.add('wall-e');
-        if ((val & 4) && pos.y === 0) cell.classList.add('wall-s');
-
-        if (pos.x === startPos.x && pos.y === startPos.y) cell.classList.add('is-start');
-        if (goalPositions.has(`${pos.x},${pos.y}`)) cell.classList.add('is-goal');
         
-        // ★ 注意：這裡不再加 .is-path 的顏色了，但 class 可以留著給其他邏輯用
+        // 判斷自己是不是特殊格子
+        const amISpecial = isSpecialCell(pos.x, pos.y);
+
+        // ★★★ 修改重點：牆壁繪製邏輯 (禮讓機制) ★★★
+        
+        // 1. 北牆 (Wall-N)
+        // 規則：如果有牆，且「北方鄰居」不是特殊格子，才由我畫。
+        // (如果北方鄰居是特殊格子，它會強制畫南牆，所以我這邊就隱藏，避免重疊)
+        if ((val & 1) && !isSpecialCell(pos.x, pos.y + 1)) {
+            cell.classList.add('wall-n');
+        }
+
+        // 2. 西牆 (Wall-W)
+        // 規則：如果有牆，且「西方鄰居」不是特殊格子，才由我畫。
+        // (如果西方鄰居是特殊格子，它會強制畫東牆，所以我這邊就隱藏)
+        if ((val & 8) && !isSpecialCell(pos.x - 1, pos.y)) {
+            cell.classList.add('wall-w');
+        }
+
+        // 3. 東牆 (Wall-E)
+        // 規則：一般情況只有邊界才畫。但如果你是特殊格子，強制畫出來(變黃色)。
+        if ((val & 2) && (pos.x === WIDTH - 1 || amISpecial)) {
+            cell.classList.add('wall-e');
+        }
+
+        // 4. 南牆 (Wall-S)
+        // 規則：一般情況只有邊界才畫。但如果你是特殊格子，強制畫出來(變黃色)。
+        if ((val & 4) && (pos.y === 0 || amISpecial)) {
+            cell.classList.add('wall-s');
+        }
+
+
+        // --- 以下樣式設定保持不變 ---
+        if (amISpecial && pos.x === startPos.x && pos.y === startPos.y) cell.classList.add('is-start');
+        if (amISpecial && goalPositions.has(`${pos.x},${pos.y}`)) cell.classList.add('is-goal');
+        
         if (pathSet.has(`${pos.x},${pos.y}`)) {
              cell.classList.add('is-path'); 
         }
@@ -319,10 +354,419 @@ function renderGrid() {
 
 // ★★★ 新增：讀取下拉選單並執行 ★★★
 function runSelectedAlgo() {
+    clearPath();
+    if (window.mazeTimer) {
+        clearInterval(window.mazeTimer);
+        window.mazeTimer = null;
+    }
+    // 清除舊的搜尋顏色
+    document.querySelectorAll('.cell.searching, .cell.current-head').forEach(el => {
+        el.classList.remove('searching', 'current-head');
+    });
+
     const select = document.getElementById('algo-select');
     const type = select.value;
+    const useAnim = document.getElementById('chk-animate') && document.getElementById('chk-animate').checked;
+
+    // ★★★ 判斷動畫邏輯 ★★★
+    if (useAnim) {
+        if (['left', 'right'].includes(type)) {
+            // 1. 左/右手法則：使用「模擬行走」動畫
+            animateWallFollower(type);
+        } else {
+            // 2. 洪水, A*, Dijkstra, Greedy：使用「通用搜尋」動畫
+            animateGraphSearch(type);
+        }
+        return; // 結束，不跑原本的快速運算
+    }
+    
+    // 原本的快速計算
     runAlgo(type);
 }
+
+
+function animateWallFollower(algoType) {
+    if (goalPositions.size === 0) return alert("請先設定終點！");
+    if (!startPos) startPos = {x:0, y:0};
+
+    statusText.innerText = `🎬 Simulating ${algoType === 'left' ? 'Left' : 'Right'} Hand Rule...`;
+
+    // 初始化機器人狀態
+    // 假設一開始面向「北方」(0)，如果北方有牆則需要順時針轉
+    let x = startPos.x;
+    let y = startPos.y;
+    let dir = 0; // 0:N, 1:E, 2:S, 3:W
+    
+    // 如果起點北方有牆，就先轉向直到找到開口 (避免一開始就撞牆)
+    // 但標準迷宮起點通常北方是開的，這裡簡單處理
+    if (isWall(x, y, dir)) {
+        if (!isWall(x, y, 1)) dir = 1;
+        else if (!isWall(x, y, 2)) dir = 2;
+        else dir = 3;
+    }
+
+    let path = [{x, y}];
+    let steps = 0;
+    const maxSteps = WIDTH * HEIGHT * 4; // 安全限制
+
+    window.mazeTimer = setInterval(() => {
+        // 1. 檢查是否到終點
+        if (goalPositions.has(`${x},${y}`)) {
+            clearInterval(window.mazeTimer);
+            finishSimulation(path);
+            return;
+        }
+        
+        // 2. 防止無窮迴圈
+        if (steps++ > maxSteps) {
+            clearInterval(window.mazeTimer);
+            statusText.innerText = "❌ Stuck in loop.";
+            return;
+        }
+
+        // 3. 視覺更新：把走過的格子變色
+        const cell = document.querySelector(`.cell[data-coord="(${x}, ${y})"]`);
+        if (cell) {
+            cell.classList.add('searching');
+            // 可以加一個 class 表示「老鼠頭」
+            // cell.classList.add('current-mouse'); 
+        }
+
+        // 4. 計算下一步 (核心邏輯)
+        // 左手法則：優先走「左邊」，不行走「前方」，再不行走「右邊」，死路則「後退」
+        // 對應的相對方向偏移量： 
+        // 左手: 左(-1) -> 前(0) -> 右(+1) -> 後(+2)
+        // 右手: 右(+1) -> 前(0) -> 左(-1) -> 後(+2)
+        
+        const turnOrder = (algoType === 'left') ? [3, 0, 1, 2] : [1, 0, 3, 2];
+        
+        let moved = false;
+        for (let turn of turnOrder) {
+            const tryDir = (dir + turn) % 4; // 轉向後的絕對方向
+            
+            // 檢查那個方向有沒有牆
+            if (!isWall(x, y, tryDir)) {
+                // 沒牆，可以走
+                dir = tryDir; // 更新面向
+                x += DIRS[dir].dx;
+                y += DIRS[dir].dy;
+                path.push({x, y});
+                moved = true;
+                break; // 走出一步就結束這一輪
+            }
+        }
+
+        // 如果四面都被圍住(理論上不會發生，因為有回頭路)，就停住
+        if (!moved) {
+             clearInterval(window.mazeTimer);
+             alert("Trapped!");
+        }
+
+    }, 50); // 模擬走路可以慢一點 (50ms)
+}
+
+
+function animateGraphSearch(algoType) {
+    if (goalPositions.size === 0) return alert("請先設定終點！");
+    if (!startPos) startPos = {x:0, y:0};
+
+    const algoName = (typeof t === 'function') ? t('algo_' + algoType) : algoType;
+    statusText.innerText = `🎬 Animating ${algoName}...`;
+
+    // 資料結構準備
+    // openSet: 待檢查的格子清單 {x, y, g, h, f, parent}
+    // visited: 記錄已檢查過的格子
+    // costSoFar: 記錄走到某格的最短步數 (避免重複走回頭路)
+    
+    let openSet = [];
+    let visited = new Set();
+    let costSoFar = new Array(WIDTH * HEIGHT).fill(Infinity);
+    let cameFrom = {}; // 用來回推路徑： cameFrom[key] = parentNode
+
+    // 輔助函式：計算與最近終點的曼哈頓距離 (Heuristic)
+    const getHeuristic = (x, y) => {
+        let minH = Infinity;
+        goalPositions.forEach(posStr => {
+            const [gx, gy] = posStr.split(',').map(Number);
+            const h = Math.abs(x - gx) + Math.abs(y - gy);
+            if (h < minH) minH = h;
+        });
+        return minH;
+    };
+
+    // 初始化起點
+    const startH = getHeuristic(startPos.x, startPos.y);
+    const startNode = { 
+        x: startPos.x, y: startPos.y, 
+        g: 0, h: startH, f: 0 + startH 
+    };
+    
+    openSet.push(startNode);
+    costSoFar[getIndex(startPos.x, startPos.y)] = 0;
+
+    // 開始動畫 Loop
+    window.mazeTimer = setInterval(() => {
+        if (openSet.length === 0) {
+            clearInterval(window.mazeTimer);
+            statusText.innerText = "❌ No Path Found.";
+            return;
+        }
+
+        // ★ 核心差異：根據演算法決定「下一個處理誰」
+        // 1. 洪水法 (BFS) => 不需要排序，先進先出 (FIFO)
+        // 2. 其他 => 需要排序 (Priority Queue)
+        if (algoType !== 'flood') {
+            openSet.sort((a, b) => {
+                if (algoType === 'astar') return a.f - b.f;     // A*: 綜合分數 f
+                if (algoType === 'dijkstra') return a.g - b.g;  // Dijkstra: 實際距離 g
+                if (algoType === 'manhattan') return a.h - b.h; // Greedy: 預估距離 h
+                return 0;
+            });
+        }
+
+        // 取出這輪要處理的節點 (一次處理一個，視覺上比較像在「思考」)
+        // 如果想要跑快一點像波浪，可以把這裡改成 while loop 處理一層
+        // 為了看清楚 A* 的觸手，我們這裡一次只處理一個點
+        const current = openSet.shift(); 
+        const currentKey = `${current.x},${current.y}`;
+
+        // 視覺效果：標記正在搜尋
+        const cell = document.querySelector(`.cell[data-coord="(${current.x}, ${current.y})"]`);
+        if (cell) cell.classList.add('searching');
+
+        // ★ 檢查是否抵達終點
+        if (goalPositions.has(currentKey)) {
+            clearInterval(window.mazeTimer);
+            reconstructPath(cameFrom, current); // 回推路徑
+            return;
+        }
+
+        visited.add(currentKey);
+
+        // 檢查鄰居
+        // 為了讓動畫好看，這裡的遍歷順序可以固定 (例如 北東南西)
+        for (let i = 0; i < 4; i++) {
+            if (isWall(current.x, current.y, i)) continue; // 被牆擋住
+
+            const nx = current.x + DIRS[i].dx;
+            const ny = current.y + DIRS[i].dy;
+            const nKey = `${nx},${ny}`;
+            const nIdx = getIndex(nx, ny);
+
+            if (visited.has(nKey)) continue; // 已經處理完畢
+
+            const newG = current.g + 1; // 假設每步權重 1
+
+            // 如果找到更短的路，或是第一次走到這
+            if (newG < costSoFar[nIdx]) {
+                costSoFar[nIdx] = newG;
+                const newH = getHeuristic(nx, ny);
+                const newF = newG + newH;
+                
+                const neighborNode = { x: nx, y: ny, g: newG, h: newH, f: newF };
+                
+                openSet.push(neighborNode);
+                cameFrom[nKey] = current; // 記錄老爸是誰，方便回推
+
+                // 把鄰居標示為「待處理」(可以選用不同顏色，這裡沿用 searching)
+                // const nCell = document.querySelector(`.cell[data-coord="(${nx}, ${ny})"]`);
+                // if(nCell) nCell.classList.add('searching-candidate'); 
+            }
+        }
+
+    }, 15); // 速度設定 (15ms 比較流暢)
+}
+
+
+// ★★★ 洪水演算法動畫版 ★★★
+function animateFloodFill() {
+    // 1. 檢查起點與終點
+    if (goalPositions.size === 0) return alert("請先設定終點！");
+    // 如果起點尚未初始化，防呆一下
+    if (!startPos) startPos = {x:0, y:0};
+
+    statusText.innerText = "🌊 Searching from Start...";
+
+    // 2. 初始化：這次改成「計算離起點的距離」
+    // distMap 這裡代表：從起點走幾步能到這裡
+    const distMap = new Array(WIDTH * HEIGHT).fill(Infinity);
+    let openSet = []; 
+
+    // 3. 把「起點」加入 Queue，距離設為 0
+    const startIdx = getIndex(startPos.x, startPos.y);
+    distMap[startIdx] = 0;
+    openSet.push({x: startPos.x, y: startPos.y, dist: 0});
+    
+    // 畫面標示：把起點變色
+    const startCell = document.querySelector(`.cell[data-coord="(${startPos.x}, ${startPos.y})"]`);
+    if(startCell) startCell.classList.add('searching');
+
+    let foundGoal = null; // 用來記錄找到哪個終點
+
+    // 4. 開始動畫迴圈
+    window.mazeTimer = setInterval(() => {
+        
+        // 如果佇列空了 (找遍全圖都沒路)
+        if (openSet.length === 0) {
+            clearInterval(window.mazeTimer);
+            statusText.innerText = "❌ No Path Found.";
+            return;
+        }
+
+        const nextLayer = [];
+        
+        // 一次處理一層 (波浪效果)
+        while(openSet.length > 0) {
+            const current = openSet.shift();
+
+            // ★ 檢查是否抵達終點 ★
+            // 只要當前格子是在 goalPositions 集合裡，就代表找到了！
+            if (goalPositions.has(`${current.x},${current.y}`)) {
+                foundGoal = current;
+                openSet = []; // 清空佇列，讓外層迴圈知道要停了
+                break;        // 跳出 while
+            }
+            
+            // 檢查四個方向
+            for (let i = 0; i < 4; i++) {
+                if (isWall(current.x, current.y, i)) continue;
+
+                const nx = current.x + DIRS[i].dx;
+                const ny = current.y + DIRS[i].dy;
+                const nIdx = getIndex(nx, ny);
+
+                if (distMap[nIdx] === Infinity) {
+                    distMap[nIdx] = current.dist + 1;
+                    nextLayer.push({x: nx, y: ny, dist: current.dist + 1});
+
+                    // 更新畫面顏色
+                    const cell = document.querySelector(`.cell[data-coord="(${nx}, ${ny})"]`);
+                    if (cell) cell.classList.add('searching');
+                }
+            }
+        }
+        
+        if (foundGoal) {
+            // 找到了！停止計時器並畫路徑
+            clearInterval(window.mazeTimer);
+            finishAnimationFromStart(distMap, foundGoal);
+        } else {
+            // 繼續下一層
+            openSet = nextLayer;
+        }
+
+    }, 30); // 動畫速度
+}
+
+// 動畫結束後的收尾：回推路徑
+function finishAnimationFromStart(distMap, reachGoalPos) {
+    statusText.innerText = "🌊 Found Goal! Tracing path...";
+
+    // 這次的路徑回推邏輯不同：
+    // distMap 紀錄的是「離起點多遠」。
+    // 我們現在人在終點 (reachGoalPos)，要「往低處走」(dist - 1) 回到起點。
+    // 最後把路徑陣列「反轉 (reverse)」，就會變成 起點 -> 終點。
+
+    let curr = { x: reachGoalPos.x, y: reachGoalPos.y };
+    let path = [curr];
+    let currentDist = distMap[getIndex(curr.x, curr.y)];
+
+    // 只要還沒回到起點 (距離 > 0)
+    while (currentDist > 0) {
+        let moved = false;
+        
+        // 找四周哪一個鄰居的距離是 currentDist - 1
+        for (let i = 0; i < 4; i++) {
+            // 注意：回推時要檢查是否有牆壁阻擋
+            // 這裡用 isWall(curr.x, curr.y, i) 代表從當前格子能不能往那個方向走
+            if (isWall(curr.x, curr.y, i)) continue;
+
+            const nx = curr.x + DIRS[i].dx;
+            const ny = curr.y + DIRS[i].dy;
+            const nIdx = getIndex(nx, ny);
+
+            // 如果鄰居距離剛好少 1，代表它是上一步的來源
+            if (distMap[nIdx] === currentDist - 1) {
+                curr = { x: nx, y: ny };
+                path.push(curr);
+                currentDist--;
+                moved = true;
+                break; // 找到一個就夠了
+            }
+        }
+
+        if (!moved) break; // 防呆
+    }
+
+    // ★ 關鍵：因為我們是從終點倒推回起點，所以要反轉陣列
+    path.reverse();
+
+    // 更新全域變數並繪圖
+    currentSolutionPath = path;
+    
+    // 注意：這裡不更新 lastFloodDistMap，因為那通常是留給「終點擴散」用的
+    // 如果你更新了，切換去顯示權重時，數字會變成「離起點距離」而非「離終點距離」
+    // 這邊我們選擇「只畫路徑」，保持權重功能的單純性
+    
+    renderGrid();
+
+    // 移除動畫顏色
+    setTimeout(() => {
+        document.querySelectorAll('.cell.searching').forEach(el => el.classList.remove('searching'));
+    }, 1000);
+
+    const stats = analyzePath(path);
+    statusText.innerText = `Goal Reached! | Steps: ${stats.steps}`;
+}
+
+
+function reconstructPath(cameFrom, current) {
+    statusText.innerText = "🚩 Goal Reached! Reconstructing path...";
+    
+    let path = [];
+    let currKey = `${current.x},${current.y}`;
+    
+    // 這裡 current 是最後一個節點，往回追溯
+    while (currKey) {
+        const parts = currKey.split(',').map(Number);
+        path.push({x: parts[0], y: parts[1]});
+        
+        const parent = cameFrom[currKey];
+        if (parent) {
+            currKey = `${parent.x},${parent.y}`;
+        } else {
+            currKey = null; // 回到起點 (起點沒有 parent)
+        }
+    }
+    
+    // 因為是從終點往回找，所以要反轉
+    path.reverse();
+    
+    currentSolutionPath = path;
+    renderGrid();
+    
+    // 移除動畫顏色
+    setTimeout(() => {
+        document.querySelectorAll('.cell.searching').forEach(el => el.classList.remove('searching'));
+    }, 1500);
+
+    const stats = analyzePath(path);
+    statusText.innerText = `Done! | Steps: ${stats.steps} | Turns: ${stats.turns}`;
+}
+
+// 模擬結束的收尾
+function finishSimulation(path) {
+    currentSolutionPath = path;
+    renderGrid();
+    
+    setTimeout(() => {
+        document.querySelectorAll('.cell.searching').forEach(el => el.classList.remove('searching'));
+    }, 1500);
+
+    const stats = analyzePath(path);
+    statusText.innerText = `Simulation Done | Total Moves: ${stats.steps}`;
+}
+
 
 // ★★★ 計算次佳路徑 (阻斷法) ★★★
 function calculateSecondBestPath(bestPath, algoType) {
@@ -657,32 +1101,49 @@ function downloadMap() {
 
 // ★★★ 3. 重構：這是原本 loadMap 裡面的邏輯，抽出來共用 ★★★
 function applyMapData(mapObj) {
-    // 安全性檢查
+    // 1. 基礎檢查
     if (!mapObj.width || !mapObj.height || !mapObj.data) {
-        throw new Error("Invalid Map Data");
+        throw new Error((typeof t === 'function' ? t('msg_file_error') : "Invalid Map Data"));
     }
 
+    // 2. 寫入全域變數
     WIDTH = mapObj.width;
     HEIGHT = mapObj.height;
     mazeData = mapObj.data;
-    startPos = mapObj.start;
-    
-    // Set 轉換兼容性處理 (JSON 裡是 Array)
-    goalPositions = new Set(mapObj.goals);
 
-    // 更新 UI 輸入框
-    document.getElementById('input-w').value = WIDTH;
-    document.getElementById('input-h').value = HEIGHT;
+    // 設定起點 (若無則預設 0,0)
+    startPos = mapObj.start || { x: 0, y: 0 };
     
-    // 更新 CSS 變數
+    // 設定終點 (若無則預設空)
+    goalPositions = new Set(mapObj.goals || []);
+
+    // 3. 更新 UI 輸入框
+    const inputW = document.getElementById('input-w');
+    const inputH = document.getElementById('input-h');
+    if (inputW) inputW.value = WIDTH;
+    if (inputH) inputH.value = HEIGHT;
+    
+    // 4. 更新 CSS 變數
     document.documentElement.style.setProperty('--cols', WIDTH);
     document.documentElement.style.setProperty('--rows', HEIGHT);
 
-    // 清空舊路徑與權重
+    // ★★★ 關鍵修復：載入後強制修正起點牆壁 ★★★
+    // 這會確保 (0,0) 的北方一定是開的，讓洪水演算法能流出去
+    if (typeof enforceStartRule === 'function') {
+        enforceStartRule();
+    }
+    
+    // ★★★ 新增：順便更新下拉選單狀態 (連動上一題的功能) ★★★
+    if (typeof switchToCustom === 'function') {
+        switchToCustom(); 
+    }
+
+    // 5. 清空舊路徑與權重
     currentSolutionPath = [];
-    secondaryPath = []; // ★ 清空
+    secondaryPath = [];
     lastFloodDistMap = [];
 
+    // 6. 重新渲染
     renderAll();
 }
 
@@ -877,6 +1338,112 @@ function getMultiRouteStatus() {
     });
 
     return statusParts.join(" | ");
+}
+
+function toggleFilePanel() {
+    const panel = document.getElementById('file-panel');
+    if (panel.style.display === 'none') {
+        panel.style.display = 'flex'; // 展開
+    } else {
+        panel.style.display = 'none'; // 隱藏
+    }
+}
+
+function toggleSettingPanel() {
+    const panel = document.getElementById('setting-panel');
+    // 如果有檔案面板，也可以考慮點設定時自動把檔案面板關掉，保持畫面乾淨
+    const filePanel = document.getElementById('file-panel');
+    if (filePanel) filePanel.style.display = 'none';
+
+    if (panel.style.display === 'none') {
+        panel.style.display = 'flex';
+    } else {
+        panel.style.display = 'none';
+    }
+}
+
+function applySizePreset() {
+    const preset = document.getElementById('size-preset').value;
+    const inputW = document.getElementById('input-w');
+    const inputH = document.getElementById('input-h');
+    const zoomSlider = document.getElementById('zoom-slider');
+
+    if (preset === 'custom') return; // 如果選自定義，什麼都不做
+
+    const size = parseInt(preset);
+    
+    // 1. 更新輸入框數值
+    inputW.value = size;
+    inputH.value = size;
+
+    // 2. 自動調整縮放比例 (貼心功能)
+    // 16x16 用 30px 比較清楚，32x32 太大所以縮小成 18px 才能看全貌
+    let newZoom = (size >= 32) ? 18 : 30;
+    
+    // 如果你在手機上，格子要更小一點
+    if (window.innerWidth < 768) {
+        newZoom = (size >= 32) ? 12 : 20; 
+    }
+
+    if (zoomSlider) {
+        zoomSlider.value = newZoom;
+        updateZoom(newZoom);
+    }
+
+    // 3. 執行重置 (產生新迷宮)
+    resizeMaze();
+}
+
+// ★★★ 新增：手動輸入時切換到「自定義」 ★★★
+function switchToCustom() {
+    const select = document.getElementById('size-preset');
+    const inputW = document.getElementById('input-w');
+    const inputH = document.getElementById('input-h');
+    
+    // 如果當前數值剛好符合預設值，就保持選單 (例如使用者手動打回 16)
+    if (inputW.value == "16" && inputH.value == "16") {
+        select.value = "16";
+    } else if (inputW.value == "32" && inputH.value == "32") {
+        select.value = "32";
+    } else {
+        select.value = "custom";
+    }
+}
+
+// ★★★ 新增：滑鼠滾輪直接縮放 (不需按 Ctrl) ★★★
+function initWheelZoom() {
+    // 我們監聽整個迷宮包裹層，這樣包含座標軸在內的區域都能觸發
+    const container = document.querySelector('.layout-wrapper');
+    const slider = document.getElementById('zoom-slider');
+
+    if (!container || !slider) return;
+
+    container.addEventListener('wheel', (e) => {
+        // 1. 關鍵：阻止瀏覽器預設的「捲動網頁」行為
+        e.preventDefault();
+
+        // 2. 取得目前的縮放值
+        let currentZoom = parseInt(slider.value);
+        
+        // 3. 決定縮放速度 (步距)
+        // deltaY < 0 代表滾輪「往上推」(放大)，> 0 代表「往下拉」(縮小)
+        const step = 5; // 你可以調整這裡的數字來改變縮放靈敏度
+        const direction = e.deltaY < 0 ? 1 : -1;
+
+        let newZoom = currentZoom + (direction * step);
+
+        // 4. 限制範圍 (讀取 slider 的 min/max 設定，防止爆掉)
+        const min = parseInt(slider.min) || 10;
+        const max = parseInt(slider.max) || 60;
+
+        if (newZoom < min) newZoom = min;
+        if (newZoom > max) newZoom = max;
+
+        // 5. 更新滑動桿與畫面
+        slider.value = newZoom;
+        updateZoom(newZoom);
+
+    }, { passive: false }); // ★★★ 注意：這裡一定要設 passive: false 才能擋住預設捲動
 }
 
 // 啟動程式

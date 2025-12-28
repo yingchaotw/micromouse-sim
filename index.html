@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title data-i18n="title">電腦鼠迷宮設定器</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxNiAxNic+PHBhdGggZmlsbD0nIzI4YTc0NScgZD0nTTIgMmgxMnYxMkgyVjJ6bTIgMnY4aDhWNEg0em0yIDJoNHY0SDZWNnonLz48L3N2Zz4=">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -21,46 +22,60 @@
         </select>
     </div>
 
-    <h1 data-i18n="title">電腦鼠迷宮設定器</h1>
-
-    <div class="layout-wrapper">
-        <div class="y-axis" id="y-axis"></div>
-        <div id="maze-grid"></div>
-        <div class="x-axis-wrapper" id="x-axis"></div>
-    </div>
-
-    <div class="info-container">
-        <div class="status-text" id="status-text" data-i18n="status_loading">Loading...</div>
-    </div>
-
     <div class="controls">
-        <div class="input-group">
-            <button class="file-btn" onclick="downloadMap()" data-i18n="btn_save">💾 儲存</button>
-            <button class="file-btn" onclick="document.getElementById('file-input').click()" data-i18n="btn_load">📂 上傳</button>
-            <input type="file" id="file-input" style="display: none;" accept=".json" onchange="loadMap(this)">
+        
+        <div style="width: 100%; display: flex; justify-content: center; gap: 10px; margin-bottom: 5px;">
+            <button class="file-btn" onclick="toggleFilePanel()" data-i18n="btn_file_menu" style="width: auto; padding: 5px 20px;">
+                📂 檔案 / 地圖選單
+            </button>
+            
+            <button class="file-btn" onclick="toggleSettingPanel()" style="width: auto; padding: 5px 20px; background-color: #6c757d;">
+                ⚙️ 尺寸與縮放
+            </button>
         </div>
 
-        <div class="input-group">
-            <select id="map-select" style="max-width: 150px;"></select>
-            <button class="primary" onclick="loadSelectedMap()" data-i18n="btn_load_map">📥 載入</button>
-            <!-- <button onclick="showImageImportModal()" style="margin-left:5px;">📷 圖片轉地圖</button> -->
+        <div id="file-panel" class="file-panel" style="display: none;">
+
+            <div class="input-group">
+                <button class="file-btn" onclick="downloadMap()" data-i18n="btn_save">💾 儲存</button>
+                <button class="file-btn" onclick="document.getElementById('file-input').click()" data-i18n="btn_load">📂 上傳</button>
+                <input type="file" id="file-input" style="display: none;" accept=".json" onchange="loadMap(this)">
+            </div>
+
+            <div class="input-group">
+                <select id="map-select" style="max-width: 150px;"></select>
+                <button class="primary" onclick="loadSelectedMap()" data-i18n="btn_load_map">📥 載入</button>
+                <!-- <button onclick="showImageImportModal()" style="margin-left:5px;">📷 圖片轉地圖</button> -->
+            </div>
         </div>
 
-        <div class="input-group">
-            <label data-i18n="lbl_w">W:</label>
-            <input type="number" id="input-w" value="16" min="4" max="64">
-            <label data-i18n="lbl_h">H:</label>
-            <input type="number" id="input-h" value="16" min="4" max="64">
-            <button class="primary" onclick="resizeMaze()" data-i18n="btn_reset">重置</button>
-        </div>
+        <div id="setting-panel" class="file-panel" style="display: none;">
+            
+            <div class="input-group">
+                <select id="size-preset" onchange="applySizePreset()" style="margin-right: 5px; max-width: 110px;">
+                    <option value="16" data-i18n="size_classic">經典 (16x16)</option>
+                    <option value="32" data-i18n="size_half">半尺寸 (32x32)</option>
+                    <option value="custom" data-i18n="size_custom">自定義</option>
+                </select>
 
-        <div class="input-group">
-            <label title="Zoom" data-i18n="lbl_zoom">🔎</label>
-            <input type="range" id="zoom-slider" min="10" max="60" value="30" oninput="updateZoom(this.value)">
+                <label data-i18n="lbl_w">W:</label>
+                <input type="number" id="input-w" value="16" min="4" max="64" oninput="switchToCustom()">
+                
+                <label data-i18n="lbl_h">H:</label>
+                <input type="number" id="input-h" value="16" min="4" max="64" oninput="switchToCustom()">
+                
+                <button class="primary" onclick="resizeMaze()" data-i18n="btn_reset">重置</button>
+            </div>
+
+            <div class="input-group">
+                <label title="Zoom" data-i18n="lbl_zoom">🔎</label>
+                <input type="range" id="zoom-slider" min="10" max="60" value="30" oninput="updateZoom(this.value)">
+            </div>
         </div>
         
-        <div style="display:flex; flex-direction:column; align-items:center; margin: 0 5px;">
-            <button onclick="handleGenerate()" data-i18n="btn_generate">隨機生成</button>
+        <div style="display:flex; flex-direction:column; align-items:flex-start; margin: 0 5px; width: 100%;">
+            
+            <button onclick="handleGenerate()" data-i18n="btn_generate" style="width: 100%; margin-bottom: 5px;">隨機生成</button>
             
             <label style="font-size:11px; cursor:pointer; margin-top:2px;">
                 <input type="checkbox" id="chk-keep" checked> <span data-i18n="chk_keep">保留現有</span>
@@ -75,12 +90,15 @@
             </label>
         </div>
         
-        <div class="input-group">
+        <!-- <div class="input-group" style="flex-direction: row;">
+            <button onclick="fillMazeWalls()" data-i18n="btn_fill" style="flex: 1;">重置為牆</button>
+            <button class="danger" onclick="clearMazeEmpty()" data-i18n="btn_clear" style="flex: 1;">全部拆除</button>
+        </div> -->
+
+        <div class="input-group btn-row"  style="flex-direction: row;">
             <button onclick="fillMazeWalls()" data-i18n="btn_fill">重置為牆</button>
             <button class="danger" onclick="clearMazeEmpty()" data-i18n="btn_clear">全部拆除</button>
         </div>
-        
-        <div style="width: 1px; height:20px; background: var(--border-color); margin: 0 5px;"></div>
 
         <div class="input-group">
             <select id="algo-select" style="padding: 6px;" onchange="updateAlgoUI()">
@@ -93,15 +111,39 @@
             </select>
             <button class="primary" onclick="runSelectedAlgo()" data-i18n="btn_run">執行</button>
             <!-- <button onclick="findSecondPath()" style="font-size:12px;">🔀 找第二路徑</button> -->
+            
+            <label style="font-size: 12px; display: flex; align-items: center; cursor: pointer;">
+                <input type="checkbox" id="chk-animate"> 🎬 動畫
+            </label>
+
             <button onclick="clearPath()" data-i18n="btn_clear_path">❌ 清除路徑</button>
         </div>
 
         <!-- <div style="width: 1px; height:20px; background: var(--border-color); margin: 0 5px;"></div> -->
 
-        <button id="mode-wall" class="mode-btn" onclick="setMode('wall')" data-i18n="btn_wall">編輯牆</button>
-        <button id="mode-start" class="mode-btn active" onclick="setMode('start')" data-i18n="btn_start">設起點</button>
-        <button id="mode-goal" class="mode-btn" onclick="setMode('goal')" data-i18n="btn_goal">設終點</button>
+        <div class="input-group" style="flex-direction: row;">
+            <button id="mode-wall" class="mode-btn active" onclick="setMode('wall')" data-i18n="btn_wall">編輯牆</button>
+            <button id="mode-start" class="mode-btn" onclick="setMode('start')" data-i18n="btn_start">設起點</button>
+            <button id="mode-goal" class="mode-btn" onclick="setMode('goal')" data-i18n="btn_goal">設終點</button>
+        </div>
     </div>
+
+    <div class="main-view">
+        
+        <h1 data-i18n="title">電腦鼠迷宮設定器</h1>
+
+        <div class="layout-wrapper">
+            <div class="y-axis" id="y-axis"></div>
+            <div id="maze-grid"></div>
+            <div class="x-axis-wrapper" id="x-axis"></div>
+        </div>
+
+        <div class="info-container">
+            <div class="status-text" id="status-text" data-i18n="status_loading">Loading...</div>
+        </div>
+
+    </div>
+
 
     <script src="js/maze_core.js"></script>
     <script src="js/i18n.js"></script>

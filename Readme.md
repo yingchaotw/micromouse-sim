@@ -17,30 +17,25 @@ A lightweight, web-based simulator for **Micromouse** maze design and algorithm 
 
 ### 🛠 Maze Editing
 - **Dynamic Sizing:** Support for standard 16x16 mazes or custom sizes (up to 64x64).
+- **⚡ Quick Presets:** One-click switch between **Classic (16x16)** and **Half-Size (32x32)** modes with auto-zoom.
 - **Interactive Editing:** Click to toggle walls. Smart corner-click detection for precise wall placement.
 - **Start & Goal:** Customizable start position and multiple goal cells (supports standard 2x2 central goal).
-- **🏆 Preset Maps:** Includes classic contest mazes for benchmarking.
 - **File Support:** Save (`.json`) and Load map data instantly.
 
 ### 🧠 Pathfinding Algorithms
-Includes standard algorithms with **Robust Wall Checking** (prevents diagonal wall-clipping):
+Includes standard algorithms with **Robust Wall Checking** and **Visual Animations**:
+- **🎬 Step-by-Step Animation:** Watch algorithms explore the maze in real-time (BFS waves, A* heuristics, or mouse movement).
 - **🌊 Flood Fill (BFS):** Finds the guaranteed shortest path. Classic Micromouse algorithm.
 - **⭐ A* Search:** Heuristic-based search using Manhattan distance.
 - **🔍 Dijkstra:** Uniform cost search.
 - **🚀 Manhattan (Greedy):** Fast greedy search.
-- **⬅️ / ➡️ Wall Follower:** Left-Hand and Right-Hand rules.
-
-### 📊 Analysis & Visualization
-- **🧭 Multi-Route Analysis:** Calculates steps and turns for North, East, South, and West approaches.
-- **🥈 Second Best Path:** Automatically calculates and displays an alternative route (dashed line) to compare strategies.
-- **🎨 Smart Visualization:** Paths are rendered with smooth SVG Bezier curves and color-coded by direction (North=Red, East=Blue, etc.).
-- **Weight Heatmap:** Visualizes distance values on each cell.
+- **⬅️ / ➡️ Wall Follower:** Left-Hand and Right-Hand rules with movement simulation.
 
 ### 🎨 UI/UX
 - **Dark/Light Theme:** Automatically detects system preference or switch manually.
+- **🖱️ Mouse Wheel Zoom:** Zoom in/out of the maze grid simply by scrolling.
+- **📂 Clean Interface:** Collapsible "File" and "Settings" panels to keep the workspace focused.
 - **Multi-Language Support:** English (EN), Traditional Chinese (繁體中文), and Japanese (日本語).
-- **📱 Responsive Design:** Optimized for both desktop and mobile touch controls.
-
 ---
 
 ## 📂 Project Structure
@@ -95,21 +90,20 @@ git clone [https://github.com/yingchaotw/micromouse-sim.git](https://github.com/
 
 ## 🕹 How to Use
 
-1. **Set Size:** Enter dimensions (e.g., 16x16) and click **Reset**.
+1. **Set Size:** * Use the dropdown to select **Classic (16x16)** or **Half-Size (32x32)**.
+   * Or enter custom dimensions and click **Reset**.
 2. **Edit Maze:**
-* Click **"Edit Wall"** mode to draw walls.
-* Use **"Generate"** to create a random maze (Recursive Backtracking).
-* Check **"Keep Existing"** to generate a maze around your drawn paths.
-
-
+   * Click **"Edit Wall"** mode to draw walls.
+   * Use **"Generate"** to create a random maze.
+   * Use **Mouse Wheel** to zoom in/out for better precision.
 3. **Set Points:** Select **Start** (S) and **Goal** (G) modes to place points.
 4. **Run Algorithm:**
-* Select an algorithm from the dropdown (e.g., Flood Fill).
-* Click **Run**.
-* View path statistics and route analysis at the bottom.
-
-
-5. **View Weights:** Check **"Show Weights"** to see the distance values on each cell.
+   * Select an algorithm from the dropdown.
+   * Check **"🎬 Animation"** to visualize the search process.
+   * Click **Run**.
+5. **Analyze:**
+   * View path statistics (Steps, Turns) at the bottom.
+   * Check **"Show Weights"** to see the distance values on each cell.
 
 ---
 

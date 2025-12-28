@@ -1,4 +1,9 @@
 /* style.css */
+
+* {
+    box-sizing: border-box;
+}
+
 :root {
     /* --- 預設 (亮色模式 Light Mode) --- */
     --bg-body: #f0f2f5;
@@ -53,6 +58,11 @@
 
         --path-bg: rgba(255, 215, 0, 0.5); /* 金色，透明度調低以免太亮 */
     }
+    :root:not([data-theme="light"]) .is-start,
+    :root:not([data-theme="light"]) .is-goal {
+        --wall-color: #ffd700 !important;
+        z-index: 50;
+    }
 }
 
 /* --- 手動強制暗黑模式 (透過 JS 加 class) --- */
@@ -72,6 +82,11 @@
     --danger: #bd2130;
     --active: #0056b3;
     --path-bg: rgba(255, 215, 0, 0.5);
+}
+[data-theme="dark"] .is-start,
+[data-theme="dark"] .is-goal {
+    --wall-color: #ffd700 !important; /* 亮黃色 */
+    z-index: 50; /* 關鍵：讓它浮在鄰居上面，這樣四面牆才不會被鄰居遮住 */
 }
 
 /* --- 手動強制亮色模式 --- */
@@ -294,6 +309,121 @@ button.danger:hover { background-color: var(--danger); color: white; }
 }
 .scale-bar::before { left: 0; } .scale-bar::after { right: 0; }
 
+.file-panel {
+    width: 100%;             /* 強制佔滿整行 */
+    display: flex;           /* 讓內部的 input-group 排列 */
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 15px;
+    
+    /* 加一點背景區隔，讓它看起來像個子選單 */
+    background-color: var(--bg-body); 
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px dashed var(--border-color);
+    margin-bottom: 10px;     /* 與下方控制項保持距離 */
+    
+    /* 加入動畫效果 (選用) */
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+
+
+/* 左側欄佈局 (僅限電腦版) 當螢幕寬度大於 900px 時啟用左側欄模式 */
+@media (min-width: 900px) {
+    
+    /* 1. Body 改為左右佈局 */
+    body {
+        flex-direction: row; /* 左欄 + 右欄 */
+        height: 100vh;
+        overflow: hidden; /* 禁止網頁捲動 */
+        padding: 0;
+        align-items: stretch; /* 確保高度拉滿 */
+    }
+
+    /* 2. 左側工具列 */
+    .controls {
+        width: 320px;           /* 稍微加寬一點，避免擁擠 */
+        height: 100%;           /* 確保填滿高度 */
+        border-right: 1px solid var(--border-color);
+        border-radius: 0;
+        margin: 0;              /* 移除 margin */
+        padding: 20px;
+        overflow-y: auto;       /* 允許內部捲動 */
+        flex-shrink: 0;         /* 禁止被壓縮 */
+        z-index: 100;
+        
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    /* 讓工具列內的項目垂直排列 */
+    .input-group {
+        flex-direction: column;
+        align-items: stretch;
+        border-right: none;
+        border-bottom: 1px solid var(--border-light);
+        padding-bottom: 10px;
+        padding-right: 0;
+    }
+
+    /* 3. 右側主視窗 */
+    .main-view {
+        flex: 1;                /* 佔滿剩餘空間 */
+        height: 100%;
+        background-color: var(--bg-body);
+        display: flex;
+        flex-direction: column;
+        align-items: center;    /* 水平置中 */
+        justify-content: center;/* 垂直置中 */
+        overflow: auto;         /* 迷宮太大時出現捲軸 */
+        position: relative;
+        padding: 20px;
+    }
+
+    /* 4. ★★★ 關鍵修正：迷宮座標對齊 ★★★ */
+    .layout-wrapper {
+        display: grid !important;
+        /* 改用 max-content 讓 Y 軸寬度自動適應，避免數字跟格子分家 */
+        grid-template-columns: max-content auto; 
+        gap: 0; /* 移除間隙，讓座標緊貼迷宮，看起來比較不奇怪 */
+        
+        margin: auto;
+        border: none;
+        box-shadow: none;
+        background: transparent;
+    }
+
+    /* 修正 Y 軸文字靠右對齊，並加一點 padding 避免黏太緊 */
+    .y-axis {
+        padding-right: 8px;
+    }
+    
+    /* 5. 頂部按鈕 (固定在右上角) */
+    .top-bar {
+        position: absolute;
+        top: 15px;
+        right: 25px;
+        width: auto;
+        z-index: 200;
+        background: rgba(255,255,255,0.5); /* 半透明背景避免擋住內容 */
+        padding: 5px;
+        border-radius: 5px;
+    }
+
+    /* 6. 資訊列浮動在右下角 */
+    .info-container {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        margin: 0;
+        z-index: 150;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        background: var(--bg-panel);
+    }
+}
+
 /* --- 手機版響應式設計 (Mobile Responsive) --- */
 @media (max-width: 768px) {
     
@@ -483,4 +613,36 @@ button.danger:hover { background-color: var(--danger); color: white; }
 /* 確保權重文字浮在螢光筆上面 (原本已有，確認一下) */
 .cell-weight {
     z-index: 20 !important; 
+}
+
+/* 1. 強制這組按鈕橫向排列，即使在側邊欄模式下 */
+.btn-row {
+    flex-direction: row !important; /* 覆蓋原本側邊欄的 column 設定 */
+    flex-wrap: wrap;                /* 如果文字真的太長 (如德文)，允許換行 */
+    gap: 5px;                       /* 按鈕之間的間距 */
+}
+
+/* 2. 設定按鈕的彈性與文字適應 */
+.btn-row button {
+    flex: 1 1 auto;         /* 關鍵：讓按鈕自動伸縮，填滿剩餘空間 */
+    white-space: nowrap;    /* 關鍵：禁止文字在按鈕內換行 */
+    min-width: fit-content; /* 關鍵：寬度絕對不能小於文字長度 */
+    padding: 8px 5px;       /* 稍微縮小左右內距，容納更多字 */
+    justify-content: center;
+}
+
+
+.cell.searching {
+    background-color: #81d4fa !important; /* 搜尋過的區域 */
+    transition: background-color 0s;      /* 即時反應 */
+}
+
+/* 暗黑模式下的搜尋顏色 (深藍) */
+[data-theme="dark"] .cell.searching {
+    background-color: #01579b !important;
+}
+
+/* 如果你想看「當前正在處理的那一格」，可以加這個 */
+.cell.current-head {
+    background-color: #ff9800 !important; /* 橘色 */
 }
