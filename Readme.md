@@ -1,62 +1,90 @@
 # Micromouse Maze Simulator & Editor
 
-A lightweight, web-based simulator for **Micromouse** maze design and algorithm testing. Built with vanilla JavaScript, HTML, and CSS. No backend or build tools required.
-
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Language](https://img.shields.io/badge/language-JavaScript-yellow.svg)
-![Status](https://img.shields.io/badge/status-Active-success.svg)
+A lightweight, high-performance web-based simulator for **Micromouse** maze design and algorithm testing. Built with modular Vanilla JavaScript, HTML, and CSS.
 
 ## 🚀 Live Demo
 
-[**Click here to try the Simulator**](https://yingchaotw.github.io/micromouse-sim/)
-*(Replace the link above after you deploy to GitHub Pages)*
+**[Click here to try the Simulator](https://yingchaotw.github.io/micromouse-sim/)**
+*(Replace with your actual GitHub Pages link)*
 
 ---
 
 ## ✨ Key Features
 
-### 🛠 Maze Editing
-- **Dynamic Sizing:** Support for standard 16x16 mazes or custom sizes (up to 64x64).
-- **⚡ Quick Presets:** One-click switch between **Classic (16x16)** and **Half-Size (32x32)** modes with auto-zoom.
-- **Interactive Editing:** Click to toggle walls. Smart corner-click detection for precise wall placement.
-- **Start & Goal:** Customizable start position and multiple goal cells (supports standard 2x2 central goal).
-- **File Support:** Save (`.json`) and Load map data instantly.
+### 🛠 Advanced Maze Editing
 
-### 🧠 Pathfinding Algorithms
-Includes standard algorithms with **Robust Wall Checking** and **Visual Animations**:
-- **🎬 Step-by-Step Animation:** Watch algorithms explore the maze in real-time (BFS waves, A* heuristics, or mouse movement).
-- **🌊 Flood Fill (BFS):** Finds the guaranteed shortest path. Classic Micromouse algorithm.
-- **⭐ A* Search:** Heuristic-based search using Manhattan distance.
-- **🔍 Dijkstra:** Uniform cost search.
-- **🚀 Manhattan (Greedy):** Fast greedy search.
-- **⬅️ / ➡️ Wall Follower:** Left-Hand and Right-Hand rules with movement simulation.
+* **🖱️ Drag-to-Draw:** Click and drag to quickly draw or erase walls (supports touch and mouse).
+* **Dynamic Sizing:** Support for standard 16x16 mazes or custom sizes (up to **128x128**).
+* **⚡ Quick Presets:** Instant switch between **Classic (16x16)** and **Half-Size (32x32)**.
+* **Start & Goal:** Customizable start position and multiple goal cells (supports 2x2 central goals).
+* **💾 Optimized Storage:** Maps are saved as **Hexadecimal Strings** in `.json` format to reduce file size by ~60%.
+
+### ⚡ High Performance & Architecture
+
+* **Web Worker Support:** Heavy algorithm calculations run in a background thread, ensuring the UI never freezes, even on large maps.
+* **Modular Design:** Codebase split into logical modules (Renderer, Interactions, Animator) for easy maintenance.
+
+### 🧠 Pathfinding & Simulation
+
+Includes standard algorithms with **Visual Animations**:
+
+* **🎬 Dual Animation Modes:**
+* **Map Calculation:** Visualizes the "search wave" propagation (Flood Fill, BFS, Dijkstra).
+* **Physical Simulation:** Simulates a single mouse agent moving and backtracking (DFS, Wall Follower).
+
+
+* **🚀 Speed Control:** Adjust animation speed in real-time with a slider.
+* **Supported Algorithms:**
+* **🌊 Flood Fill:** The classic Micromouse algorithm (guaranteed shortest path).
+* **⭐ A* Search:** Heuristic-based search (Manhattan distance).
+* **🔍 Dijkstra:** Uniform cost search.
+* **🌀 DFS:** Depth-First Search with backtracking visualization.
+* **⬅️ / ➡️ Wall Follower:** Left/Right-Hand rules simulation.
+
+
 
 ### 🎨 UI/UX
-- **Dark/Light Theme:** Automatically detects system preference or switch manually.
-- **🖱️ Mouse Wheel Zoom:** Zoom in/out of the maze grid simply by scrolling.
-- **📂 Clean Interface:** Collapsible "File" and "Settings" panels to keep the workspace focused.
-- **Multi-Language Support:** English (EN), Traditional Chinese (繁體中文), and Japanese (日本語).
+
+* **Dark/Light Theme:** Auto-detects system preference.
+* **🖱️ Mouse Wheel Zoom:** Smooth zooming logic centered on the maze.
+* **🌍 Multi-Language:** English, Traditional Chinese (繁體中文), and Japanese (日本語).
+* **📊 Path Analysis:** Real-time stats for Steps, Turns, and Straightaways.
+
 ---
 
 ## 📂 Project Structure
 
-The project follows a modular structure for easy maintenance:
+The project follows a modular architecture:
 
 ```text
 micromouse-sim/
 ├── index.html           # Main entry point
-├── style.css            # Styling and CSS variables (Theming)
-├── README.md            # Documentation
-└── js/
-    ├── i18n.js          # Internationalization (EN/ZH/JA)
-    ├── maze_core.js     # Core logic, variables, and helper functions
-    ├── ui_control.js    # DOM manipulation and event handling
-    └── algos/           # Algorithm implementations
-        ├── astar.js
-        ├── dijkstra.js
-        ├── flood_fill.js
-        ├── manhattan.js
-        └── wall_follower.js
+├── style.css            # Styling and CSS variables
+├── maps/                # Pre-loaded map files
+├── js/
+│   ├── setup.js         # Global variables & DOM initialization
+│   ├── ui_control.js    # Main controller & Worker communication
+│   ├── maze_core.js     # Data model & Hex compression logic
+│   ├── maze_worker.js   # Background thread for heavy algorithms
+│   ├── i18n.js          # Internationalization
+│   ├── maps_index.js    # Map file registry
+│   │
+│   ├── ui/              # UI Modules
+│   │   ├── animator.js      # Animation logic (Step/Time-based)
+│   │   ├── interactions.js  # Mouse/Touch events (Drag-to-draw)
+│   │   └── renderer.js      # SVG & Grid rendering
+│   │
+│   ├── utils/           # Utility functions
+│   │   └── path_analyzer.js # Path statistics calculation
+│   │
+│   └── algos/           # Algorithm implementations
+│       ├── astar.js
+│       ├── bfs.js
+│       ├── dfs.js
+│       ├── dijkstra.js
+│       ├── flood_fill.js
+│       ├── manhattan.js
+│       └── wall_follower.js
 
 ```
 
@@ -66,55 +94,57 @@ micromouse-sim/
 
 ### Prerequisites
 
-You only need a modern web browser (Chrome, Firefox, Edge, Safari). No `npm` or `node` required.
+You only need a modern web browser (Chrome, Firefox, Edge, Safari). No `npm` or backend required.
+
+> **Note:** Due to browser security policies (CORS) regarding Web Workers, this project **cannot** be run directly by opening the `index.html` file path (file://) in some browsers.
 
 ### Local Installation
 
 1. Clone the repository:
 ```bash
-git clone [https://github.com/yingchaotw/micromouse-sim.git](https://github.com/yingchaotw/micromouse-sim.git)
+git clone https://github.com/yingchaotw/micromouse-sim.git
 
 ```
 
 
-2. Open `index.html` in your browser.
+2. Run a local server (Recommended):
+* **VS Code:** Install "Live Server" extension and click "Go Live".
+* **Python:** `python -m http.server`
+* **Node:** `npx serve`
 
-### Deployment (GitHub Pages)
 
-1. Push the code to your GitHub repository.
-2. Go to **Settings** > **Pages**.
-3. Select the `main` branch as the source.
-4. Your simulator will be live at `https://<user>.github.io/<repo>/`.
+3. Open `http://localhost:5500` (or your port) in the browser.
 
 ---
 
 ## 🕹 How to Use
 
-1. **Set Size:** * Use the dropdown to select **Classic (16x16)** or **Half-Size (32x32)**.
-   * Or enter custom dimensions and click **Reset**.
-2. **Edit Maze:**
-   * Click **"Edit Wall"** mode to draw walls.
-   * Use **"Generate"** to create a random maze.
-   * Use **Mouse Wheel** to zoom in/out for better precision.
-3. **Set Points:** Select **Start** (S) and **Goal** (G) modes to place points.
-4. **Run Algorithm:**
-   * Select an algorithm from the dropdown.
-   * Check **"🎬 Animation"** to visualize the search process.
-   * Click **Run**.
-5. **Analyze:**
-   * View path statistics (Steps, Turns) at the bottom.
-   * Check **"Show Weights"** to see the distance values on each cell.
+1. **Setup:** Select a size preset (16x16 / 32x32) or enter custom dimensions.
+2. **Draw Walls:**
+* Select **"Edit Wall"** mode.
+* **Drag** your mouse across grid lines to draw walls continuously.
+
+
+3. **Configure:** Set **Start (S)** and **Goal (G)** points.
+4. **Simulate:**
+* Choose an algorithm.
+* Check **"🎬 Animate"** for visualization.
+* Adjust the **Speed Slider** to control playback.
+* Click **Run**.
+
+
+5. **Analyze:** View path steps and turns at the bottom status bar.
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome!
 
 1. Fork the project.
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`).
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`).
-4. Push to the branch (`git push origin feature/AmazingFeature`).
+2. Create your feature branch (`git checkout -b feature/NewFeature`).
+3. Commit your changes.
+4. Push to the branch.
 5. Open a Pull Request.
 
 ---
@@ -127,5 +157,5 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 ## 🙏 Acknowledgements
 
-* Inspired by the classic Micromouse competition rules.
-* Algorithms implemented based on standard graph theory.
+* Inspired by standard Micromouse competition rules.
+* Algorithms based on Graph Theory and Maze Solving techniques.

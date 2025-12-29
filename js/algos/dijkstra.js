@@ -1,13 +1,15 @@
 // js/algos/dijkstra.js
 
-function solveDijkstra() {
-    const distMap = new Array(WIDTH * HEIGHT).fill(Infinity);
-    const parentMap = new Array(WIDTH * HEIGHT).fill(null);
-    const visited = new Array(WIDTH * HEIGHT).fill(false);
+function solveDijkstra(maze) {
+    const { width, height, startPos, goalPositions } = maze;
+
+    const distMap = new Array(width * height).fill(Infinity);
+    const parentMap = new Array(width * height).fill(null);
+    const visited = new Array(width * height).fill(false);
     
     let openSet = []; 
 
-    const startIdx = getIndex(startPos.x, startPos.y);
+    const startIdx = maze.getIndex(startPos.x, startPos.y);
     distMap[startIdx] = 0;
     openSet.push(startIdx);
 
@@ -18,16 +20,16 @@ function solveDijkstra() {
         if (visited[uIdx]) continue;
         visited[uIdx] = true;
 
-        const uPos = getLogicalPos(uIdx);
+        const uPos = maze.getCoord(uIdx);
 
         if (goalPositions.has(`${uPos.x},${uPos.y}`)) {
             const path = [];
             let currIdx = uIdx;
             while (currIdx !== null) {
-                path.push(getLogicalPos(currIdx));
+                path.push(maze.getCoord(currIdx));
                 currIdx = parentMap[currIdx];
             }
-            lastFloodDistMap = distMap;
+            maze.weightMap = distMap; // 更新權重
             return path.reverse();
         }
 
@@ -35,14 +37,12 @@ function solveDijkstra() {
             const nx = uPos.x + DIRS[i].dx;
             const ny = uPos.y + DIRS[i].dy;
             
-            // 邊界檢查
-            if (nx < 0 || nx >= WIDTH || ny < 0 || ny >= HEIGHT) continue;
+            if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
 
-            // ★★★ 雙重牆壁檢查 ★★★
             const opDir = (i + 2) % 4;
-            if (isWall(uPos.x, uPos.y, i) || isWall(nx, ny, opDir)) continue;
+            if (maze.isWall(uPos.x, uPos.y, i) || maze.isWall(nx, ny, opDir)) continue;
 
-            const vIdx = getIndex(nx, ny);
+            const vIdx = maze.getIndex(nx, ny);
 
             if (!visited[vIdx]) {
                 const alt = distMap[uIdx] + 1;
@@ -55,6 +55,6 @@ function solveDijkstra() {
         }
     }
     
-    lastFloodDistMap = distMap;
+    maze.weightMap = distMap;
     return []; 
 }

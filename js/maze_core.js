@@ -1,279 +1,339 @@
-// 全域變數 (Global Variables)
-const REAL_CELL_SIZE_MM = 180;
-let WIDTH = 16;
-let HEIGHT = 16;
-let mazeData = [];
-let startPos = {x: 0, y: 0};
-let goalPositions = new Set();
-let lastFloodDistMap = []; // 讓所有演算法都可以更新這張表來顯示權重
+// js/maze_core.js
 
-// ==========================================
-// ★★★ 電腦鼠演算法核心實作區 ★★★
-// ==========================================
-
-// 定義方向常數 (順序重要：北、東、南、西)
+// 定義方向常數 (靜態常數，供外部或內部使用)
 const DIRS = [
-    { dx: 0, dy: 1, bit: 1 }, // N (Index 0)
-    { dx: 1, dy: 0, bit: 2 }, // E (Index 1)
-    { dx: 0, dy: -1, bit: 4 }, // S (Index 2)
-    { dx: -1, dy: 0, bit: 8 }  // W (Index 3)
+    { dx: 0, dy: 1, bit: 1 }, // N
+    { dx: 1, dy: 0, bit: 2 }, // E
+    { dx: 0, dy: -1, bit: 4 }, // S
+    { dx: -1, dy: 0, bit: 8 }  // W
 ];
 
-
-// 輔助函數：檢查某個位置的某個方向是否有牆
-function isWall(x, y, dirIndex) {
-    // 邊界檢查
-    if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) return true;
-    const idx = getIndex(x, y);
-    return (mazeData[idx] & DIRS[dirIndex].bit) !== 0;
-}
-
-// 輔助函數 (Helper Functions)
-function getIndex(lx, ly) { 
-    return (HEIGHT - 1 - ly) * WIDTH + lx; 
-}
-
-function getLogicalPos(index) {
-    return { x: index % WIDTH, y: HEIGHT - 1 - Math.floor(index / WIDTH) };
-}
-
-// 核心規則：強制起點規則 (強化版：同步修正鄰居牆壁)
-function enforceStartRule() {
-    if (!startPos) return;
-    
-    const x = startPos.x;
-    const y = startPos.y;
-    const idx = getIndex(x, y);
-
-    // 1. 強制起點本身為 U 型 (只留北方開口) -> 數值 14 (西8 + 南4 + 東2)
-    mazeData[idx] = 14; 
-
-    // 2. 修正北方鄰居 (必須打通)
-    // 起點北方沒牆(0)，所以鄰居的南方也不能有牆
-    if (y < HEIGHT - 1) {
-        const nIdx = getIndex(x, y + 1);
-        mazeData[nIdx] &= ~4; // 移除鄰居的南牆 (Bit 4)
+class MazeCore {
+    constructor(width = 16, height = 16) {
+        this.setSize(width, height);
     }
 
-    // 3. 修正東方鄰居 (必須有牆)
-    // 起點東方有牆(2)，所以鄰居的西方也必須有牆
-    if (x < WIDTH - 1) {
-        const eIdx = getIndex(x + 1, y);
-        mazeData[eIdx] |= 8; // 強制加上鄰居的西牆 (Bit 8)
+    // 初始化/重置尺寸
+    setSize(w, h) {
+        this.width = w;
+        this.height = h;
+        // 使用 Uint8Array 優化效能 (0~255)，迷宮牆壁數值最大只到 15
+        this.data = new Uint8Array(w * h).fill(15);
+        
+        this.startPos = { x: 0, y: 0 };
+        this.goalPositions = new Set();
+        
+        // 用來儲存最後一次計算的權重圖 (供 UI 顯示)
+        this.weightMap = null; 
+        // 用來儲存路徑
+        this.solutionPath = [];
+        this.secondaryPath = [];
     }
 
-    // 4. 修正西方鄰居 (必須有牆)
-    // 起點西方有牆(8)，所以鄰居的東方也必須有牆
-    if (x > 0) {
-        const wIdx = getIndex(x - 1, y);
-        mazeData[wIdx] |= 2; // 強制加上鄰居的東牆 (Bit 2)
+    // --- 基礎存取 Helper ---
+
+    getIndex(x, y) {
+        if (x < 0 || x >= this.width || y < 0 || y >= this.height) return -1;
+        // Y 軸向上為正，陣列存儲通常是 row-major，這裡維持你原本的邏輯
+        // (Height - 1 - y) * width + x
+        return (this.height - 1 - y) * this.width + x;
     }
 
-    // 5. 修正南方鄰居 (必須有牆)
-    // 起點南方有牆(4)，所以鄰居的北方也必須有牆
-    if (y > 0) {
-        const sIdx = getIndex(x, y - 1);
-        mazeData[sIdx] |= 1; // 強制加上鄰居的北牆 (Bit 1)
-    }
-}
-
-// 演算法：隨機迷宮生成 (Algorithm)
-function generateRandomMaze() {
-
-    if (typeof currentSolutionPath !== 'undefined') {
-        currentSolutionPath = []; 
+    getCoord(index) {
+        const y = this.height - 1 - Math.floor(index / this.width);
+        const x = index % this.width;
+        return { x, y };
     }
 
-    const keep = document.getElementById('chk-keep') ? document.getElementById('chk-keep').checked : false;
-    // ★ 取得使用者是否想要多路徑
-    const allowLoops = document.getElementById('chk-loops') ? document.getElementById('chk-loops').checked : false;
-    
-    // 1. 預處理
-    if (keep) {
-        let changedCount = 0;
-        for(let i=0; i<mazeData.length; i++) {
-            if (mazeData[i] === 0) { mazeData[i] = 15; changedCount++; }
-        }
-        if (changedCount === 0 && mazeData.every(v => v === 0)) mazeData.fill(15);
-    } else {
-        mazeData.fill(15);
+    // 檢查是否有牆 (支援邊界檢查)
+    isWall(x, y, dirIndex) {
+        if (x < 0 || x >= this.width || y < 0 || y >= this.height) return true;
+        const idx = this.getIndex(x, y);
+        return (this.data[idx] & DIRS[dirIndex].bit) !== 0;
     }
-    
-    enforceStartRule();
 
-    // 2. 初始化 Stack 與 Visited
-    const stack = []; 
-    const visited = new Set();
-    let seeds = [];
+    // --- 編輯功能 ---
 
-    // 標記既有路徑
-    for(let i=0; i<mazeData.length; i++) {
-        if (mazeData[i] !== 15) {
-            const p = getLogicalPos(i);
-            visited.add(`${p.x},${p.y}`);
-            seeds.push(p);
+    // 切換牆壁 (自動處理鄰居)
+    toggleWall(x, y, dirIdx) {
+        const idx = this.getIndex(x, y);
+        if (idx === -1) return;
+
+        const bit = DIRS[dirIdx].bit;
+        this.data[idx] ^= bit; // 反轉自己的牆
+
+        // 處理鄰居的牆
+        const nx = x + DIRS[dirIdx].dx;
+        const ny = y + DIRS[dirIdx].dy;
+        const nIdx = this.getIndex(nx, ny);
+        
+        if (nIdx !== -1) {
+            // 對面方向的 bit (N<->S: 1<->4, E<->W: 2<->8)
+            // 簡單算法: N(0)->S(2), E(1)->W(3) => (dirIdx + 2) % 4
+            const opDirIdx = (dirIdx + 2) % 4;
+            const opBit = DIRS[opDirIdx].bit;
+            this.data[nIdx] ^= opBit;
         }
     }
 
-    if (seeds.length === 0) {
-        stack.push(startPos);
-        visited.add(`${startPos.x},${startPos.y}`);
-    } else {
-        seeds.sort(() => Math.random() - 0.5);
-        seeds.forEach(s => stack.push(s));
+    setStart(x, y) {
+        this.startPos = { x, y };
+        // 如果起點剛好是終點，移除該終點
+        const key = `${x},${y}`;
+        if (this.goalPositions.has(key)) {
+            this.goalPositions.delete(key);
+        }
+        this.enforceStartRule();
     }
 
-    // 3. 執行 Backtracking (生成主幹)
-    while (stack.length > 0) {
-        const current = stack[stack.length - 1];
-        const x = current.x;
-        const y = current.y;
-        const idx = getIndex(x, y);
+    toggleGoal(x, y) {
+        const key = `${x},${y}`;
+        // 終點不能是起點
+        if (x === this.startPos.x && y === this.startPos.y) return;
 
-        let dirs = [[0, 1, 1, 4], [1, 0, 2, 8], [0, -1, 4, 1], [-1, 0, 8, 2]];
-
-        if (x === startPos.x && y === startPos.y) dirs = dirs.filter(d => d[1] === 1);
-
-        for (let i = dirs.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [dirs[i], dirs[j]] = [dirs[j], dirs[i]];
+        if (this.goalPositions.has(key)) {
+            this.goalPositions.delete(key);
+        } else {
+            this.goalPositions.add(key);
         }
+        // 當終點改變時，重新執行終點規則 (打通內部)
+        this.enforceGoalRule();
+    }
 
-        let carved = false;
-        for (let [dx, dy, bit, opBit] of dirs) {
-            const nx = x + dx; const ny = y + dy;
-            const key = `${nx},${ny}`;
-            if (nx >= 0 && nx < WIDTH && ny >= 0 && ny < HEIGHT) {
-                const nIdx = getIndex(nx, ny);
-                if (!visited.has(key) && mazeData[nIdx] === 15) {
-                    mazeData[idx] &= ~bit;
-                    mazeData[nIdx] &= ~opBit;
-                    visited.add(key);
-                    stack.push({x: nx, y: ny});
-                    carved = true;
-                    break; 
-                }
+    // --- 規則強制 ---
+
+    enforceStartRule() {
+        const { x, y } = this.startPos;
+        const idx = this.getIndex(x, y);
+        
+        // 1. 本身只留北牆開口 (U型: 14 = 8+4+2)
+        this.data[idx] = 14;
+
+        // 2. 打通北方鄰居的南牆
+        if (y < this.height - 1) {
+            const nIdx = this.getIndex(x, y + 1);
+            this.data[nIdx] &= ~4; // Remove South(4)
+        }
+        // 3. 封閉其他方向鄰居 (如果鄰居存在)
+        if (x < this.width - 1) this.data[this.getIndex(x + 1, y)] |= 8; // E鄰居加W牆
+        if (x > 0)              this.data[this.getIndex(x - 1, y)] |= 2; // W鄰居加E牆
+        if (y > 0)              this.data[this.getIndex(x, y - 1)] |= 1; // S鄰居加N牆
+    }
+
+    enforceGoalRule() {
+        if (this.goalPositions.size === 0) return;
+        
+        // 簡單實作：遍歷所有終點格子，若鄰居也是終點，則打通中間的牆
+        this.goalPositions.forEach(posStr => {
+            const [x, y] = posStr.split(',').map(Number);
+            const idx = this.getIndex(x, y);
+
+            // Check North
+            if (y < this.height - 1 && this.goalPositions.has(`${x},${y + 1}`)) {
+                this.data[idx] &= ~1;
+                this.data[this.getIndex(x, y + 1)] &= ~4;
+            }
+            // Check East
+            if (x < this.width - 1 && this.goalPositions.has(`${x + 1},${y}`)) {
+                this.data[idx] &= ~2;
+                this.data[this.getIndex(x + 1, y)] &= ~8;
+            }
+            // South & West 會在處理鄰居時被連帶處理，但為了完整性可以全寫
+        });
+    }
+
+    // --- 生成演算法 (封裝在內部) ---
+
+    generateRandom(keepExisting = false, allowLoops = false) {
+        // 1. Reset Logic
+        if (!keepExisting) {
+            this.data.fill(15);
+        } else {
+            for(let i=0; i<this.data.length; i++) {
+                if(this.data[i] === 0) this.data[i] = 15;
             }
         }
-        if (!carved) stack.pop();
-    }
-    
-    // ★★★ 4. 新增：如果是多路徑模式，執行「去除死路」邏輯 ★★★
-    if (allowLoops) {
-        // 參數 0.5 代表去除 50% 的死路 (可以自己調整 0.1 ~ 1.0)
-        // 這樣就會產生很多迴圈
-        removeDeadEnds(0.5);
-    }
 
-    // ★★★ 加入這兩行規則強制執行 ★★★
-    enforceStartRule(); // 強制起點 U 型且打通鄰居
-    enforceGoalRule();  // ★ 新增：強制終點內部無牆 (打通成房間)
+        // 先執行一次規則，確保起點周圍的牆壁狀態正確
+        this.enforceStartRule();
 
-    // 更新 UI
-    if (typeof renderGrid === 'function') renderGrid();
-    const statusText = document.getElementById('status-text');
-    
-    if (statusText && typeof t === 'function') {
-        statusText.innerText = t('status_generated');
-    }
-}
-
-
-// 核心規則：強制終點內部沒有牆壁 (形成一個大房間)
-function enforceGoalRule() {
-    if (goalPositions.size === 0) return;
-
-    // 遍歷每一個終點格子
-    goalPositions.forEach(posStr => {
-        const [x, y] = posStr.split(',').map(Number);
-        const idx = getIndex(x, y);
-
-        // 檢查四周的鄰居：如果鄰居也是終點的一部分，就打通牆壁
+        const stack = [];
+        const visited = new Set();
         
-        // 北方鄰居
-        if (y < HEIGHT - 1 && goalPositions.has(`${x},${y+1}`)) {
-            mazeData[idx] &= ~1; // 拆掉自己的北牆
-            const nIdx = getIndex(x, y + 1);
-            mazeData[nIdx] &= ~4; // 拆掉鄰居的南牆
+        // ... (中間保留既有路徑的邏輯不變) ...
+        for(let i=0; i<this.data.length; i++) {
+            if (this.data[i] !== 15) {
+                const p = this.getCoord(i);
+                visited.add(`${p.x},${p.y}`);
+                stack.push(p); 
+            }
         }
-        
-        // 東方鄰居
-        if (x < WIDTH - 1 && goalPositions.has(`${x+1},${y}`)) {
-            mazeData[idx] &= ~2; // 拆掉自己的東牆
-            const eIdx = getIndex(x + 1, y);
-            mazeData[eIdx] &= ~8; // 拆掉鄰居的西牆
+
+        if (stack.length === 0) {
+            stack.push(this.startPos);
+            visited.add(`${this.startPos.x},${this.startPos.y}`);
+        } else {
+            stack.sort(() => Math.random() - 0.5);
         }
-        
-        // 南方鄰居
-        if (y > 0 && goalPositions.has(`${x},${y-1}`)) {
-            mazeData[idx] &= ~4; // 拆掉自己的南牆
-            const sIdx = getIndex(x, y - 1);
-            mazeData[sIdx] &= ~1; // 拆掉鄰居的北牆
-        }
-        
-        // 西方鄰居
-        if (x > 0 && goalPositions.has(`${x-1},${y}`)) {
-            mazeData[idx] &= ~8; // 拆掉自己的西牆
-            const wIdx = getIndex(x - 1, y);
-            mazeData[wIdx] &= ~2; // 拆掉鄰居的東牆
-        }
-    });
 
-    // 確保至少有一個入口：
-    // 隨機生成演算法本身就會保證迷宮連通，所以一定會有路徑通往終點區域。
-    // 如果你有開啟「多路徑 (迴圈)」模式，入口甚至會不只一個。
-    // 這個函數主要負責把終點區域內部的牆壁清空，形成一個開放空間。
-}
+        while(stack.length > 0) {
+            const curr = stack[stack.length - 1];
+            const { x, y } = curr;
+            const idx = this.getIndex(x, y);
 
-
-// ★★★ 輔助函數：去除死路 (製造迴圈) ★★★
-function removeDeadEnds(percentage) {
-    // 找出所有的死路 (只有 3 面牆壁的格子)
-    let deadEnds = [];
-    for (let i = 0; i < WIDTH * HEIGHT; i++) {
-        // 計算牆壁數量 (檢查 1, 2, 4, 8 bits)
-        let wallCount = 0;
-        if (mazeData[i] & 1) wallCount++;
-        if (mazeData[i] & 2) wallCount++;
-        if (mazeData[i] & 4) wallCount++;
-        if (mazeData[i] & 8) wallCount++;
-
-        // 3 面牆 = 死路 (Dead End)。排除起點，避免起點被打通
-        const pos = getLogicalPos(i);
-        if (wallCount === 3 && !(pos.x === startPos.x && pos.y === startPos.y)) {
-            deadEnds.push(i);
-        }
-    }
-
-    // 隨機打通其中一部分
-    deadEnds.forEach(idx => {
-        if (Math.random() > percentage) return; // 依照機率跳過
-
-        const pos = getLogicalPos(idx);
-        const x = pos.x; 
-        const y = pos.y;
-
-        // 尋找可以打通的鄰居 (原本有牆，且鄰居在邊界內)
-        const candidates = [];
-        // 北
-        if ((mazeData[idx] & 1) && y + 1 < HEIGHT) candidates.push({ bit: 1, opBit: 4, nx: x, ny: y+1 });
-        // 東
-        if ((mazeData[idx] & 2) && x + 1 < WIDTH)  candidates.push({ bit: 2, opBit: 8, nx: x+1, ny: y });
-        // 南
-        if ((mazeData[idx] & 4) && y - 1 >= 0)     candidates.push({ bit: 4, opBit: 1, nx: x, ny: y-1 });
-        // 西
-        if ((mazeData[idx] & 8) && x - 1 >= 0)     candidates.push({ bit: 8, opBit: 2, nx: x-1, ny: y });
-
-        if (candidates.length > 0) {
-            // 隨機選一道牆打掉
-            const target = candidates[Math.floor(Math.random() * candidates.length)];
+            let dirs = [0, 1, 2, 3]; // N, E, S, W
             
-            // 拆牆
-            mazeData[idx] &= ~target.bit;
-            
-            // 拆鄰居的牆
-            const nIdx = getIndex(target.nx, target.ny);
-            mazeData[nIdx] &= ~target.opBit;
+            // ★★★ 新增：如果當前是起點，強制優先嘗試往北 (0) ★★★
+            // 這避免了隨機挖了東邊，結果最後被 enforceStartRule 封死的狀況
+            if (x === this.startPos.x && y === this.startPos.y) {
+                // 將北 (0) 移到陣列最後面 (Stack 是後進先出? 不，這裡是 dirs 迴圈，我們希望北被選中)
+                // 這裡的邏輯是 shuffle dirs，我們只要確保 '0' 在裡面。
+                // 為了保險，我們可以把其他方向移除，只留北。
+                // 只有當北邊在範圍內才這樣做
+                if (y + 1 < this.height) {
+                    dirs = [0]; 
+                }
+            } else {
+                // 其他格子正常隨機洗牌
+                for (let i = dirs.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [dirs[i], dirs[j]] = [dirs[j], dirs[i]];
+                }
+            }
+
+            let carved = false;
+            for (let dirIdx of dirs) {
+                const nx = x + DIRS[dirIdx].dx;
+                const ny = y + DIRS[dirIdx].dy;
+                const nKey = `${nx},${ny}`;
+
+                if (nx >= 0 && nx < this.width && ny >= 0 && ny < this.height) {
+                    const nIdx = this.getIndex(nx, ny);
+                    if (!visited.has(nKey) && this.data[nIdx] === 15) {
+                        const bit = DIRS[dirIdx].bit;
+                        const opBit = DIRS[(dirIdx + 2) % 4].bit;
+                        
+                        this.data[idx] &= ~bit;
+                        this.data[nIdx] &= ~opBit;
+                        
+                        visited.add(nKey);
+                        stack.push({x: nx, y: ny});
+                        carved = true;
+                        break;
+                    }
+                }
+            }
+            if (!carved) stack.pop();
         }
-    });
+
+        if (allowLoops) {
+            this.removeDeadEnds(0.5);
+        }
+
+        // 最後再強制執行一次，確保格式正確
+        this.enforceStartRule();
+        this.enforceGoalRule();
+    }
+
+    removeDeadEnds(percentage) {
+        // 邏輯同原本，但使用 this.data
+        const deadEnds = [];
+        for (let i = 0; i < this.data.length; i++) {
+            let walls = 0;
+            if (this.data[i] & 1) walls++;
+            if (this.data[i] & 2) walls++;
+            if (this.data[i] & 4) walls++;
+            if (this.data[i] & 8) walls++;
+            
+            const p = this.getCoord(i);
+            // 排除起點
+            if (walls === 3 && !(p.x === this.startPos.x && p.y === this.startPos.y)) {
+                deadEnds.push(i);
+            }
+        }
+
+        deadEnds.forEach(idx => {
+            if (Math.random() > percentage) return;
+            const p = this.getCoord(idx);
+            // 隨機找一個有牆的方向打通... (省略細節，邏輯同前，改用 this 存取)
+            // 簡單版：隨機選一個方向，如果是牆且不出界，就拆
+            const candidates = [];
+            for(let d=0; d<4; d++) {
+                 if (this.isWall(p.x, p.y, d)) {
+                     const nx = p.x + DIRS[d].dx;
+                     const ny = p.y + DIRS[d].dy;
+                     if(nx >=0 && nx < this.width && ny >= 0 && ny < this.height) {
+                         candidates.push(d);
+                     }
+                 }
+            }
+            if(candidates.length > 0) {
+                const pick = candidates[Math.floor(Math.random()*candidates.length)];
+                this.toggleWall(p.x, p.y, pick);
+            }
+        });
+    }
+
+    // --- 資料匯出/匯入 ---
+    
+toJSON() {
+        // 優化：將資料陣列轉換為 16 進制字串 (Hex String)
+        // 例如 [15, 14, 5] -> "FE5"
+        // 這樣可以大幅縮小 JSON 檔案體積
+        let hexString = "";
+        for (let i = 0; i < this.data.length; i++) {
+            // toString(16) 轉成 16 進制, toUpperCase() 轉大寫
+            hexString += this.data[i].toString(16).toUpperCase();
+        }
+
+        return {
+            version: "2.0", // 標記版本
+            width: this.width,
+            height: this.height,
+            mapData: hexString, // 改用字串儲存
+            start: this.startPos,
+            // Set 轉 Array
+            goals: Array.from(this.goalPositions)
+        };
+    }
+
+loadFromJSON(json) {
+        this.width = json.width;
+        this.height = json.height;
+        this.startPos = json.start || {x:0, y:0};
+        this.goalPositions = new Set(json.goals || []);
+        
+        // 重置資料陣列
+        this.data = new Uint8Array(this.width * this.height);
+
+        // ★★★ 關鍵：判斷資料格式以支援舊版 ★★★
+        
+        if (typeof json.mapData === 'string') {
+            // 新版格式：讀取 Hex 字串 ("FE5...")
+            // 檢查長度是否吻合，防呆
+            const limit = Math.min(json.mapData.length, this.data.length);
+            for (let i = 0; i < limit; i++) {
+                // parseInt(char, 16) 將 "F" 轉回 15
+                this.data[i] = parseInt(json.mapData[i], 16);
+            }
+        } 
+        else if (Array.isArray(json.data)) {
+            // 舊版格式：讀取陣列 ([15, 14, 5...]) - 向下相容
+            // 你的舊檔案是用 'data' 這個 key
+            this.data = new Uint8Array(json.data);
+        }
+        else if (typeof json.data === 'object') {
+            // 有時候 JSON.stringify(Uint8Array) 會變成 {"0":15, "1":14...} 的物件格式
+            // 這裡做個防護轉回 Array
+            const arr = Object.values(json.data);
+            this.data = new Uint8Array(arr);
+        }
+
+        // 清空暫存狀態
+        this.solutionPath = [];
+        this.secondaryPath = [];
+        this.weightMap = null;
+        
+        this.enforceStartRule();
+    }
 }

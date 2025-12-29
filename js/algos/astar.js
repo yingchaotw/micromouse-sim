@@ -1,8 +1,10 @@
 // js/algos/astar.js
 
-function solveAStar() {
+function solveAStar(maze) {
+    const { width, height, startPos, goalPositions } = maze;
+
     function heuristic(idx) {
-        const pos = getLogicalPos(idx);
+        const pos = maze.getCoord(idx); // 改用 maze.getCoord
         let minH = Infinity;
         goalPositions.forEach(gStr => {
             const [gx, gy] = gStr.split(',').map(Number);
@@ -12,11 +14,11 @@ function solveAStar() {
         return minH;
     }
 
-    const gScore = new Array(WIDTH * HEIGHT).fill(Infinity);
-    const fScore = new Array(WIDTH * HEIGHT).fill(Infinity);
-    const parentMap = new Array(WIDTH * HEIGHT).fill(null);
+    const gScore = new Array(width * height).fill(Infinity);
+    const fScore = new Array(width * height).fill(Infinity);
+    const parentMap = new Array(width * height).fill(null);
     
-    const startIdx = getIndex(startPos.x, startPos.y);
+    const startIdx = maze.getIndex(startPos.x, startPos.y);
     gScore[startIdx] = 0;
     fScore[startIdx] = heuristic(startIdx);
     
@@ -28,16 +30,17 @@ function solveAStar() {
         const currentIdx = openSet.shift();
         openSetHash.delete(currentIdx);
         
-        const currPos = getLogicalPos(currentIdx);
+        const currPos = maze.getCoord(currentIdx);
 
         if (goalPositions.has(`${currPos.x},${currPos.y}`)) {
             const path = [];
             let temp = currentIdx;
             while (temp !== null) {
-                path.push(getLogicalPos(temp));
+                path.push(maze.getCoord(temp));
                 temp = parentMap[temp];
             }
-            lastFloodDistMap = fScore; 
+            // 寫回權重供顯示 (顯示 fScore 或 gScore 皆可)
+            maze.weightMap = fScore; 
             return path.reverse();
         }
 
@@ -45,14 +48,13 @@ function solveAStar() {
             const nx = currPos.x + DIRS[i].dx;
             const ny = currPos.y + DIRS[i].dy;
 
-            // 邊界檢查
-            if (nx < 0 || nx >= WIDTH || ny < 0 || ny >= HEIGHT) continue;
+            if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
 
-            // ★★★ 雙重牆壁檢查 ★★★
+            // 雙重牆壁檢查
             const opDir = (i + 2) % 4;
-            if (isWall(currPos.x, currPos.y, i) || isWall(nx, ny, opDir)) continue;
+            if (maze.isWall(currPos.x, currPos.y, i) || maze.isWall(nx, ny, opDir)) continue;
 
-            const neighborIdx = getIndex(nx, ny);
+            const neighborIdx = maze.getIndex(nx, ny);
             const tentative_gScore = gScore[currentIdx] + 1;
 
             if (tentative_gScore < gScore[neighborIdx]) {

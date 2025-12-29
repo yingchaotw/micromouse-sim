@@ -1,14 +1,15 @@
 // js/algos/wall_follower.js
 
-function solveWallFollower(hand) {
+function solveWallFollower(maze, hand) {
+    const { width, height, startPos, goalPositions } = maze;
+    
     const path = [];
     let curr = { x: startPos.x, y: startPos.y };
     let dirIdx = 0; // 預設朝北
 
-    const MAX_STEPS = WIDTH * HEIGHT * 4; 
+    const MAX_STEPS = width * height * 4; 
     path.push({ ...curr });
 
-    // 定義相對方向：[轉向靠牆側, 直走, 轉向另一側, 回頭]
     const turns = hand === 'left' ? [3, 0, 1, 2] : [1, 0, 3, 2]; 
 
     for (let step = 0; step < MAX_STEPS; step++) {
@@ -18,7 +19,8 @@ function solveWallFollower(hand) {
         for (let i = 0; i < 4; i++) {
             const tryDirIdx = (dirIdx + turns[i] + 4) % 4;
             
-            if (!isWall(curr.x, curr.y, tryDirIdx)) {
+            // 使用 maze.isWall
+            if (!maze.isWall(curr.x, curr.y, tryDirIdx)) {
                 curr.x += DIRS[tryDirIdx].dx;
                 curr.y += DIRS[tryDirIdx].dy;
                 dirIdx = tryDirIdx; 

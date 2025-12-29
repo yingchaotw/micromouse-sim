@@ -9,7 +9,8 @@
 </head>
 <body>
 
-    <div class="top-bar">
+    <header class="top-bar">
+        <h1 style="margin: 0; font-size: 1.2rem; margin-right: auto;" data-i18n="title">電腦鼠迷宮設定器</h1>
         <select id="theme-select" class="theme-select" onchange="toggleTheme(this.value)">
             <option value="auto">🌗 Auto</option>
             <option value="light">☀️ Light</option>
@@ -20,118 +21,128 @@
             <option value="en">🇺🇸 English</option>
             <option value="ja">🇯🇵 日本語</option>
         </select>
-    </div>
+    </header>
 
-    <div class="controls">
-        
-        <div style="width: 100%; display: flex; justify-content: center; gap: 10px; margin-bottom: 5px;">
-            <button class="file-btn" onclick="toggleFilePanel()" data-i18n="btn_file_menu" style="width: auto; padding: 5px 20px;">
-                📂 檔案 / 地圖選單
-            </button>
-            
-            <button class="file-btn" onclick="toggleSettingPanel()" style="width: auto; padding: 5px 20px; background-color: #6c757d;">
-                ⚙️ 尺寸與縮放
+    <div class="controls" id="sidebar">
+    
+        <div class="sidebar-header">
+            <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle Sidebar">
+                ☰
             </button>
         </div>
 
-        <div id="file-panel" class="file-panel" style="display: none;">
-
-            <div class="input-group">
-                <button class="file-btn" onclick="downloadMap()" data-i18n="btn_save">💾 儲存</button>
-                <button class="file-btn" onclick="document.getElementById('file-input').click()" data-i18n="btn_load">📂 上傳</button>
-                <input type="file" id="file-input" style="display: none;" accept=".json" onchange="loadMap(this)">
-            </div>
-
-            <div class="input-group">
-                <select id="map-select" style="max-width: 150px;"></select>
-                <button class="primary" onclick="loadSelectedMap()" data-i18n="btn_load_map">📥 載入</button>
-                <!-- <button onclick="showImageImportModal()" style="margin-left:5px;">📷 圖片轉地圖</button> -->
-            </div>
-        </div>
-
-        <div id="setting-panel" class="file-panel" style="display: none;">
-            
-            <div class="input-group">
-                <select id="size-preset" onchange="applySizePreset()" style="margin-right: 5px; max-width: 110px;">
-                    <option value="16" data-i18n="size_classic">經典 (16x16)</option>
-                    <option value="32" data-i18n="size_half">半尺寸 (32x32)</option>
-                    <option value="custom" data-i18n="size_custom">自定義</option>
-                </select>
-
-                <label data-i18n="lbl_w">W:</label>
-                <input type="number" id="input-w" value="16" min="4" max="64" oninput="switchToCustom()">
-                
-                <label data-i18n="lbl_h">H:</label>
-                <input type="number" id="input-h" value="16" min="4" max="64" oninput="switchToCustom()">
-                
-                <button class="primary" onclick="resizeMaze()" data-i18n="btn_reset">重置</button>
-            </div>
-
-            <div class="input-group">
-                <label title="Zoom" data-i18n="lbl_zoom">🔎</label>
-                <input type="range" id="zoom-slider" min="10" max="60" value="30" oninput="updateZoom(this.value)">
-            </div>
-        </div>
+        <div class="sidebar-scroll-area">
+            <div class="sidebar-content">
         
-        <div style="display:flex; flex-direction:column; align-items:flex-start; margin: 0 5px; width: 100%;">
+                <div class="controls-content">
+                    <div class="main-actions" style="display: flex; flex-direction: column; gap: 8px;">
+                        <button onclick="toggleFilePanel()" class="file-btn" data-i18n="btn_file_menu">📂 檔案 / 地圖管理</button>
+                        <button onclick="toggleSettingPanel()" class="file-btn" data-i18n="btn_setting_menu">📏 尺寸與縮放</button>
+                        <button onclick="handleGenerate()" class="file-btn" data-i18n="btn_generate">🎲 隨機生成</button>
+                    </div>
+                </div>
+
+                <div id="file-panel" class="file-panel" style="display: none;">
+                    <label data-i18n="lbl_select_map">選擇地圖:</label>
+                    <select id="map-select" onchange="loadSelectedMap()" style="width: 100%; margin-bottom: 5px;"></select>
+                    
+                    <div class="btn-row">
+                        <button onclick="document.getElementById('file-upload').click()" data-i18n="btn_load">📂 讀取</button>
+                        <input type="file" id="file-upload" accept=".json" style="display: none;" onchange="loadMap(this)">
+                        <button onclick="downloadMap()" data-i18n="btn_save">💾 下載</button>
+                    </div>
+                </div>
+
+                <div id="setting-panel" class="file-panel" style="display: none;">
+                    <div class="input-group">
+                        <select id="size-preset" onchange="applySizePreset()" style="margin-right: 5px; max-width: 110px;">
+                            <option value="16" data-i18n="size_classic">經典 (16x16)</option>
+                            <option value="32" data-i18n="size_half">半尺寸 (32x32)</option>
+                            <option value="custom" data-i18n="size_custom">自定義</option>
+                        </select>
+
+                        <label data-i18n="lbl_w">W:</label>
+                        <input type="number" id="input-w" value="16" min="4" max="64" oninput="switchToCustom()">
+                        
+                        <label data-i18n="lbl_h">H:</label>
+                        <input type="number" id="input-h" value="16" min="4" max="64" oninput="switchToCustom()">
+                        
+                        <button class="primary" onclick="resizeMaze()" data-i18n="btn_reset">重置</button>
+                    </div>
+
+                    <div class="input-group">
+                        <label title="Zoom" data-i18n="lbl_zoom">🔎</label>
+                        <input type="range" id="zoom-slider" min="10" max="60" value="30" oninput="updateZoom(this.value)">
+                    </div>
+                </div>
             
-            <button onclick="handleGenerate()" data-i18n="btn_generate" style="width: 100%; margin-bottom: 5px;">隨機生成</button>
-            
-            <label style="font-size:11px; cursor:pointer; margin-top:2px;">
-                <input type="checkbox" id="chk-keep" checked> <span data-i18n="chk_keep">保留現有</span>
-            </label>
-            
-            <label style="font-size:11px; cursor:pointer; margin-top:2px; color: rgb(102, 0, 255);">
-                <input type="checkbox" id="chk-loops"> <span data-i18n="chk_loops">多路徑 (迴圈)</span>
-            </label>
+                <div style="display:flex; flex-direction:column; align-items:flex-start; width: 100%; margin-bottom: 10px; padding-left: 10px;">
+                    <label style="font-size:12px; cursor:pointer; margin-top:2px;">
+                        <input type="checkbox" id="chk-keep" checked> <span data-i18n="chk_keep">保留現有</span>
+                    </label>
+                    <label style="font-size:12px; cursor:pointer; margin-top:2px;">
+                        <input type="checkbox" id="chk-loops"> <span data-i18n="chk_loops">多路徑 (迴圈)</span>
+                    </label>
+                    <label style="font-size:12px; cursor:pointer; margin-top:2px;">
+                        <input type="checkbox" id="chk-show-weights"> <span data-i18n="chk_weight">顯示權重</span>
+                    </label>
+                </div>
 
-            <label style="font-size:11px; cursor:pointer; margin-top:2px;">
-                <input type="checkbox" id="chk-show-weights" onchange="renderGrid()"> <span data-i18n="chk_weight">顯示權重</span>
-            </label>
+                <div class="input-group">
+                    <label data-i18n="lbl_algo">演算法:</label> 
+                    <select id="algo-select" style="padding: 6px;" onchange="updateAlgoUI()">
+                        <option value="flood" data-i18n="algo_flood">🌊 洪水</option>
+                        <option value="bfs" data-i18n="algo_bfs">📡 BFS (廣度)</option>
+                        <option value="dfs" data-i18n="algo_dfs">🌀 DFS (深度)</option>
+                        <option value="astar" data-i18n="algo_astar">⭐ A*</option>
+                        <option value="dijkstra" data-i18n="algo_dijkstra">🔍 Dijkstra</option>
+                        <option value="manhattan" data-i18n="algo_manhattan">🚀 曼哈頓</option>
+                        <option value="left" data-i18n="algo_left">⬅️ 左手</option>
+                        <option value="right" data-i18n="algo_right">➡️ 右手</option>
+                    </select>
+
+                    <div style="width: 100%; display: flex; justify-content: center; gap: 10px; margin-bottom: 5px;">
+                        <button class="primary" onclick="runSelectedAlgo()" data-i18n="btn_run">執行</button>
+                        <button onclick="clearPath()" data-i18n="btn_clear_path">❌ 清除路徑</button>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label style="margin-top:5px; display:flex; align-items:center;">
+                        <input type="checkbox" id="chk-animate"> 
+                        <span data-i18n="lbl_animate">Animate</span>
+                    </label>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                        <label data-i18n="lbl_speed">🚀 速度:</label>
+                        <span id="speed-val" style="font-weight: bold; color: var(--primary); font-size: 0.9em;">50%</span>
+                    </div>
+
+                    <div class="slider-container">
+                        <input type="range" id="speed-slider" min="1" max="100" value="50">
+                    </div>
+                </div>
+
+            <!-- <div style="width: 1px; height:20px; background: var(--border-color); margin: 0 5px;"></div> -->
+
+                <div class="input-group" style="flex-direction: row;">
+                    <button id="mode-wall" class="mode-btn active" onclick="setMode('wall')" data-i18n="btn_wall">編輯牆</button>
+                    <button id="mode-start" class="mode-btn" onclick="setMode('start')" data-i18n="btn_start">設起點</button>
+                    <button id="mode-goal" class="mode-btn" onclick="setMode('goal')" data-i18n="btn_goal">設終點</button>
+                </div>
+
+                <div class="input-group btn-row" style="flex-direction: row;">
+                    <button onclick="fillMazeWalls()" data-i18n="btn_fill">重置為牆</button>
+                    <button class="danger" onclick="clearMazeEmpty()" data-i18n="btn_clear">全部拆除</button>
+                </div>
+
+            </div>
         </div>
-        
-        <!-- <div class="input-group" style="flex-direction: row;">
-            <button onclick="fillMazeWalls()" data-i18n="btn_fill" style="flex: 1;">重置為牆</button>
-            <button class="danger" onclick="clearMazeEmpty()" data-i18n="btn_clear" style="flex: 1;">全部拆除</button>
-        </div> -->
-
-        <div class="input-group btn-row"  style="flex-direction: row;">
-            <button onclick="fillMazeWalls()" data-i18n="btn_fill">重置為牆</button>
-            <button class="danger" onclick="clearMazeEmpty()" data-i18n="btn_clear">全部拆除</button>
-        </div>
-
-        <div class="input-group">
-            <select id="algo-select" style="padding: 6px;" onchange="updateAlgoUI()">
-                <option value="flood" data-i18n="algo_flood">🌊 洪水</option>
-                <option value="astar" data-i18n="algo_astar">⭐ A*</option>
-                <option value="dijkstra" data-i18n="algo_dijkstra">🔍 Dijkstra</option>
-                <option value="manhattan" data-i18n="algo_manhattan">🚀 曼哈頓</option>
-                <option value="left" data-i18n="algo_left">⬅️ 左手</option>
-                <option value="right" data-i18n="algo_right">➡️ 右手</option>
-            </select>
-            <button class="primary" onclick="runSelectedAlgo()" data-i18n="btn_run">執行</button>
-            <!-- <button onclick="findSecondPath()" style="font-size:12px;">🔀 找第二路徑</button> -->
-            
-            <label style="font-size: 12px; display: flex; align-items: center; cursor: pointer;">
-                <input type="checkbox" id="chk-animate"> 🎬 動畫
-            </label>
-
-            <button onclick="clearPath()" data-i18n="btn_clear_path">❌ 清除路徑</button>
-        </div>
-
-        <!-- <div style="width: 1px; height:20px; background: var(--border-color); margin: 0 5px;"></div> -->
-
-        <div class="input-group" style="flex-direction: row;">
-            <button id="mode-wall" class="mode-btn active" onclick="setMode('wall')" data-i18n="btn_wall">編輯牆</button>
-            <button id="mode-start" class="mode-btn" onclick="setMode('start')" data-i18n="btn_start">設起點</button>
-            <button id="mode-goal" class="mode-btn" onclick="setMode('goal')" data-i18n="btn_goal">設終點</button>
-        </div>
+        </aside>
     </div>
 
     <div class="main-view">
         
-        <h1 data-i18n="title">電腦鼠迷宮設定器</h1>
-
         <div class="layout-wrapper">
             <div class="y-axis" id="y-axis"></div>
             <div id="maze-grid"></div>
@@ -144,17 +155,26 @@
 
     </div>
 
-
     <script src="js/maze_core.js"></script>
-    <script src="js/i18n.js"></script>
-    <script src="js/maps_index.js"></script>
-    <!-- <script src="js/image_importer.js"></script>  -->
-    <script src="js/algos/wall_follower.js"></script>
-    <script src="js/algos/flood_fill.js"></script>
-    <script src="js/algos/dijkstra.js"></script>
-    <script src="js/algos/astar.js"></script>
-    <script src="js/algos/manhattan.js"></script>
 
+    <script src="js/maps_index.js"></script> 
+    <script src="js/i18n.js"></script>       
+    <script src="js/setup.js"></script>
+    <!-- <script src="js/image_importer.js"></script>  -->
+
+    <script src="js/algos/flood_fill.js"></script>
+    <script src="js/algos/bfs.js"></script>
+    <script src="js/algos/dfs.js"></script>
+    <script src="js/algos/astar.js"></script>
+    <script src="js/algos/dijkstra.js"></script>
+    <script src="js/algos/manhattan.js"></script>
+    <script src="js/algos/wall_follower.js"></script>
+
+    <script src="js/utils/path_analyzer.js"></script>
+    <script src="js/ui/interactions.js"></script>
+    <script src="js/ui/renderer.js"></script>
+    <script src="js/ui/animator.js"></script>
     <script src="js/ui_control.js"></script>
+
 </body>
 </html>

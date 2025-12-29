@@ -1,0 +1,150 @@
+// js/ui/renderer.js
+
+// 畫面縮放
+function updateZoom(val) {
+    document.documentElement.style.setProperty('--cell-size', val + 'px');
+}
+
+function resetView() {
+    panX = 0;
+    panY = 0;
+    if(domGrid) domGrid.style.transform = `translate(0px, 0px)`;
+}
+
+// 主題切換
+function toggleTheme(mode) {
+    if (mode === 'auto') {
+        document.documentElement.removeAttribute('data-theme');
+    } else {
+        document.documentElement.setAttribute('data-theme', mode);
+    }
+}
+
+// 輔助 SVG 畫線
+function drawSvgPath(svg, pathData, color, isDashed) {
+    const svgNS = "http://www.w3.org/2000/svg";
+    const pathElem = document.createElementNS(svgNS, "path");
+    
+    pathElem.setAttribute("class", isDashed ? "path-dashed" : "path-line");
+    pathElem.style.stroke = color;
+    
+    let d = "";
+    const points = pathData.map(p => ({
+        x: p.x + 0.5,
+        y: (mazeApp.height - 1 - p.y) + 0.5 
+    }));
+
+    if (points.length > 0) {
+        d += `M ${points[0].x} ${points[0].y}`;
+        for (let i = 1; i < points.length - 1; i++) {
+            const p1 = points[i];
+            const p2 = points[i+1];
+            const xc = (p1.x + p2.x) / 2;
+            const yc = (p1.y + p2.y) / 2;
+            d += ` Q ${p1.x} ${p1.y} ${xc} ${yc}`;
+        }
+        if (points.length > 1) {
+            d += ` L ${points[points.length-1].x} ${points[points.length-1].y}`;
+        }
+    }
+    pathElem.setAttribute("d", d);
+    svg.appendChild(pathElem);
+}
+
+// 從 Core 更新 UI 數值
+function updateUIFromCore() {
+    document.documentElement.style.setProperty('--cols', mazeApp.width);
+    document.documentElement.style.setProperty('--rows', mazeApp.height);
+    const inputW = document.getElementById('input-w');
+    const inputH = document.getElementById('input-h');
+    if(inputW) inputW.value = mazeApp.width;
+    if(inputH) inputH.value = mazeApp.height;
+    renderAll();
+}
+
+// 渲染外框與座標
+function renderAll() {
+    domYAxis.innerHTML = '';
+    domXAxis.innerHTML = '';
+    for (let y = mazeApp.height - 1; y >= 0; y--) {
+        const div = document.createElement('div'); div.textContent = y; domYAxis.appendChild(div);
+    }
+    for (let x = 0; x < mazeApp.width; x++) {
+        const div = document.createElement('div'); div.textContent = x; domXAxis.appendChild(div);
+    }
+    renderGrid();
+    updateStatus();
+}
+
+// 核心渲染 (繪製格子與路徑)
+function renderGrid() {
+    domGrid.innerHTML = '';
+    domGrid.style.position = 'relative';
+
+    // SVG 層
+    const svgNS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("class", "maze-svg-layer");
+    svg.setAttribute("viewBox", `0 0 ${mazeApp.width} ${mazeApp.height}`);
+    svg.setAttribute("preserveAspectRatio", "none");
+
+    if (mazeApp.secondaryPath && mazeApp.secondaryPath.length > 0) {
+        const info = getPathAnalysisInfo(mazeApp.secondaryPath);
+        drawSvgPath(svg, mazeApp.secondaryPath, info.color, true);
+    }
+    if (mazeApp.solutionPath && mazeApp.solutionPath.length > 0) {
+        const info = getPathAnalysisInfo(mazeApp.solutionPath);
+        drawSvgPath(svg, mazeApp.solutionPath, info.color, false);
+    }
+    domGrid.appendChild(svg);
+
+    const isSpecialCell = (tx, ty) => {
+        if (tx === mazeApp.startPos.x && ty === mazeApp.startPos.y) return true;
+        return mazeApp.goalPositions.has(`${tx},${ty}`);
+    };
+
+    for (let i = 0; i < mazeApp.data.length; i++) {
+        const pos = mazeApp.getCoord(i); 
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.setAttribute('data-coord', `(${pos.x}, ${pos.y})`);
+
+        const val = mazeApp.data[i];
+        const amISpecial = isSpecialCell(pos.x, pos.y);
+
+        if ((val & 1) && !isSpecialCell(pos.x, pos.y + 1)) cell.classList.add('wall-n');
+        if ((val & 8) && !isSpecialCell(pos.x - 1, pos.y)) cell.classList.add('wall-w');
+        if ((val & 2) && (pos.x === mazeApp.width - 1 || amISpecial)) cell.classList.add('wall-e');
+        if ((val & 4) && (pos.y === 0 || amISpecial)) cell.classList.add('wall-s');
+
+        if (amISpecial && pos.x === mazeApp.startPos.x && pos.y === mazeApp.startPos.y) cell.classList.add('is-start');
+        if (amISpecial && mazeApp.goalPositions.has(`${pos.x},${pos.y}`)) cell.classList.add('is-goal');
+
+        if (mazeApp.weightMap && mazeApp.weightMap[i] !== undefined && mazeApp.weightMap[i] !== Infinity) {
+            const dist = mazeApp.weightMap[i];
+            const span = document.createElement('span');
+            span.className = 'cell-weight';
+            if (val === 15) span.classList.add('on-wall');
+            span.innerText = dist;
+            cell.appendChild(span);
+        }
+
+        cell.onclick = (e) => {
+            if (currentMode === 'wall') return; 
+            handleCellClick(i, e);
+        };
+        domGrid.appendChild(cell);
+    }
+}
+
+function updateStatus() {
+    const realW = (mazeApp.width * REAL_CELL_SIZE_MM / 1000).toFixed(2);
+    const realH = (mazeApp.height * REAL_CELL_SIZE_MM / 1000).toFixed(2);
+    
+    statusText.innerText = t('status_info', {
+        w: mazeApp.width, h: mazeApp.height,
+        rw: realW, rh: realH,
+        sx: mazeApp.startPos.x, sy: mazeApp.startPos.y,
+        gcount: mazeApp.goalPositions.size
+    });
+}

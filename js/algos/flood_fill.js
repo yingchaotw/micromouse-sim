@@ -1,14 +1,16 @@
 // js/algos/flood_fill.js
 
-function solveFloodFill() {
-    // 1. 建立距離表 (權重圖)
-    const distMap = new Array(WIDTH * HEIGHT).fill(Infinity);
+function solveFloodFill(maze) {
+    // 1. 從 maze 實例解構出需要的資訊
+    const { width, height, startPos, goalPositions } = maze;
+    
+    const distMap = new Array(width * height).fill(Infinity);
     const queue = [];
 
-    // 從終點開始倒灌 (Reverse Flood Fill)
+    // 從終點開始倒灌
     goalPositions.forEach(goalStr => {
         const [gx, gy] = goalStr.split(',').map(Number);
-        const idx = getIndex(gx, gy);
+        const idx = maze.getIndex(gx, gy); // 改用 maze.getIndex
         distMap[idx] = 0;
         queue.push({ x: gx, y: gy });
     });
@@ -17,14 +19,15 @@ function solveFloodFill() {
     let head = 0;
     while(head < queue.length) {
         const curr = queue[head++];
-        const currentDist = distMap[getIndex(curr.x, curr.y)];
+        const currentDist = distMap[maze.getIndex(curr.x, curr.y)];
 
         for (let i = 0; i < 4; i++) {
-            if (isWall(curr.x, curr.y, i)) continue;
+            // 改用 maze.isWall
+            if (maze.isWall(curr.x, curr.y, i)) continue;
 
-            const nx = curr.x + DIRS[i].dx;
+            const nx = curr.x + DIRS[i].dx; // DIRS 仍是全域常數，沒問題
             const ny = curr.y + DIRS[i].dy;
-            const nIdx = getIndex(nx, ny);
+            const nIdx = maze.getIndex(nx, ny);
 
             if (distMap[nIdx] === Infinity) {
                 distMap[nIdx] = currentDist + 1;
@@ -33,26 +36,25 @@ function solveFloodFill() {
         }
     }
 
-    // 更新全域變數以供顯示
-    lastFloodDistMap = distMap;
+    // ★★★ 關鍵：將計算結果寫回實例，讓 UI 可以畫出數字 ★★★
+    maze.weightMap = distMap;
 
     // 2. 從起點回溯路徑
     const path = [];
     let curr = { x: startPos.x, y: startPos.y };
     path.push({...curr});
 
-    if (distMap[getIndex(curr.x, curr.y)] === Infinity) return []; // 無解
+    if (distMap[maze.getIndex(curr.x, curr.y)] === Infinity) return []; 
 
-    while (distMap[getIndex(curr.x, curr.y)] !== 0) {
-        const currentDist = distMap[getIndex(curr.x, curr.y)];
+    while (distMap[maze.getIndex(curr.x, curr.y)] !== 0) {
+        const currentDist = distMap[maze.getIndex(curr.x, curr.y)];
         let moved = false;
         
-        // 找周圍數字比較小的鄰居
         for (let i = 0; i < 4; i++) {
-            if (isWall(curr.x, curr.y, i)) continue;
+            if (maze.isWall(curr.x, curr.y, i)) continue;
             const nx = curr.x + DIRS[i].dx;
             const ny = curr.y + DIRS[i].dy;
-            const nIdx = getIndex(nx, ny);
+            const nIdx = maze.getIndex(nx, ny);
             
             if (distMap[nIdx] < currentDist) {
                 curr = { x: nx, y: ny };
