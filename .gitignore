@@ -3,12 +3,14 @@
 *.ini
 
 # 忽略 Python 產生的快取
+*venv/
 __pycache__/
 *.pyc
 
 # 忽略 tools 資料夾內的圖片 (只保留腳本)
-tools/*.jpg
-tools/*.png
+tools/build/
+tools/**/**.jpg
+tools/**/**.png
 
 # 忽略除錯用的圖片
 debug_result.jpg

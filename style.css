@@ -1,11 +1,9 @@
-/* style.css (Refactored & Unified) */
+/* style.css */
 
 /* =========================================
    1. Reset & Variables
    ========================================= */
-* {
-    box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 :root {
     /* --- Light Mode (Default) --- */
@@ -15,30 +13,24 @@
     --text-sub: #666666;
     --border-color: #cccccc;
     --border-light: #eeeeee;
-    
     --wall-color: #000000;
     --grid-line: #f0f0f0;
-    
     --btn-bg: #ffffff;
     --btn-hover: #e9ecef;
     --btn-text: #444444;
-    
     --primary: #28a745;
     --primary-hover: #218838;
     --danger: #dc3545;
     --active: #007bff;
-    
     --start-bg: #4ade80;
     --goal-bg: #f87171;
     --path-bg: rgba(255, 235, 59, 0.7);
-    
     --cell-size: 30px;
     --cols: 16;
     --rows: 16;
 }
 
-/* --- Dark Mode Variables --- */
-/* 定義深色模式的變數集 */
+/* --- Dark Mode Variables (Keep Original) --- */
 @media (prefers-color-scheme: dark) {
     :root {
         --bg-body: #121212;
@@ -58,21 +50,16 @@
         --active: #0056b3;
         --path-bg: rgba(255, 215, 0, 0.5);
     }
-    /* 排除明確被切換成 Light 的情況 */
     :root:not([data-theme="light"]) .cell.is-start.wall-n,
     :root:not([data-theme="light"]) .cell.is-goal.wall-n { border-top-color: #FFD700 !important; }
-
     :root:not([data-theme="light"]) .cell.is-start.wall-e,
     :root:not([data-theme="light"]) .cell.is-goal.wall-e { border-right-color: #FFD700 !important; }
-
     :root:not([data-theme="light"]) .cell.is-start.wall-s,
     :root:not([data-theme="light"]) .cell.is-goal.wall-s { border-bottom-color: #FFD700 !important; }
-
     :root:not([data-theme="light"]) .cell.is-start.wall-w,
     :root:not([data-theme="light"]) .cell.is-goal.wall-w { border-left-color: #FFD700 !important; }
 }
 
-/* 強制套用深色模式 (透過 JS 切換 class/attribute) */
 [data-theme="dark"] {
     --bg-body: #121212;
     --bg-panel: #1e1e1e;
@@ -91,7 +78,6 @@
     --path-bg: rgba(255, 215, 0, 0.5);
 }
 
-/* 強制套用淺色模式 */
 [data-theme="light"] {
     --bg-body: #f0f2f5;
     --bg-panel: #ffffff;
@@ -111,7 +97,7 @@
 }
 
 /* =========================================
-   2. Base Layout (CSS Grid)
+   2. Base Layout (CSS Grid) - REFACTORED
    ========================================= */
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -119,21 +105,23 @@ body {
     color: var(--text-main);
     margin: 0;
     height: 100vh;
-    overflow: hidden; /* 防止整頁卷軸 */
+    overflow: hidden;
     
-    /* Grid Layout Setup */
     display: grid;
-    grid-template-rows: 50px 1fr;      /* Header Height, Main Content */
-    grid-template-columns: 280px 1fr;  /* Sidebar Width, Main Content */
+    /* Header 50px, Content 剩餘 */
+    grid-template-rows: 50px 1fr;
+    /* Sidebar 280px, Main 剩餘 */
+    grid-template-columns: 280px 1fr;
     grid-template-areas: 
         "header header"
         "sidebar main";
     transition: all 0.3s ease;
 }
 
-/* 收折側邊欄時的 Body 狀態 */
+/* 狀態：側邊欄關閉 (Desktop) */
 body.sidebar-closed {
-    grid-template-columns: 50px 1fr;
+    /* 讓側邊欄欄位歸零，內容區 (1fr) 自動填滿 */
+    grid-template-columns: 0 1fr;
 }
 
 /* --- Top Bar (Header) --- */
@@ -143,9 +131,164 @@ body.sidebar-closed {
     border-bottom: 1px solid var(--border-color);
     display: flex;
     align-items: center;
-    padding: 0 15px;
+    
+    /* ★ 修改重點 1: 使用 relative 讓內部的絕對定位元素參考這裡 */
+    position: relative; 
+    
+    /* ★ 修改重點 2: 左邊強制留出 60px 給漢堡按鈕，右邊留 15px */
+    padding: 0 15px 0 60px; 
+    
     gap: 10px;
     z-index: 50;
+    overflow: hidden; /* 防止內容爆出去 */
+}
+
+/* 設定標題文字 */
+.top-bar h1 {
+    margin: 0;
+    font-size: 1.2rem;
+    margin-right: auto; /* 把右邊的東西推到底 */
+    
+    /* ★ 修改重點 4: 防止標題把右邊擠出去 */
+    white-space: nowrap;       /* 文字不換行 */
+    overflow: hidden;          /* 超出長度隱藏 */
+    text-overflow: ellipsis;   /* 超出變成 ... */
+    min-width: 0;              /* 關鍵：允許 Flex 子元素縮小到比內容還小 */
+    flex-shrink: 1;            /* 允許標題被壓縮 */
+}
+
+/* 設定右上的下拉選單 */
+.theme-select, .lang-select {
+    /* ★ 修改重點 5: 禁止下拉選單被壓縮，確保它們永遠在畫面上 */
+    flex-shrink: 0; 
+    max-width: 120px; /* 避免選單本身太寬 */
+}
+
+
+/* =========================================
+   Theme Toggle Switch (精準覆蓋版)
+   ========================================= */
+.theme-switch-wrapper {
+    display: flex;
+    align-items: center;
+    margin-right: 15px;
+}
+
+.theme-switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 30px;
+    flex-shrink: 0;
+}
+
+.theme-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+/* 滑軌背景 */
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #87CEEB; /* 淺色：天藍 */
+    transition: .4s;
+    border-radius: 34px;
+    border: 1px solid var(--border-color);
+    overflow: hidden; /* 關鍵：確保圓球跑出去時不會破圖 */
+}
+
+/* 圓球按鈕 (加大版) */
+.slider:before {
+    position: absolute;
+    content: "";
+    
+    /* ★ 修改 1: 加大圓球，確保能完全蓋住圖示 */
+    height: 26px; 
+    width: 26px;
+    
+    /* 計算位置: (30px高度 - 26px圓球) / 2 = 2px */
+    left: 2px;
+    bottom: 1px; 
+    
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+    z-index: 2; /* 確保圓球蓋在圖示上面 */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+}
+
+/* 深色模式狀態 */
+input:checked + .slider {
+    background-color: #2c3e50; /* 深色：夜空黑 */
+    border-color: #555;
+}
+
+/* 圓球移動距離 */
+input:checked + .slider:before {
+    /* 總寬 60 - 圓球 26 - 左邊距 2 - 右邊距 2 = 30px */
+    transform: translateX(30px);
+}
+
+/* --- 圖示樣式 (改為絕對定位) --- */
+.icon-sun, .icon-moon {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    
+    /* ★ 修改 2: 字體稍微縮小，確保不會超出圓球 */
+    font-size: 14px; 
+    line-height: 1;
+    z-index: 1; /* 在圓球下面 */
+    user-select: none;
+    pointer-events: none;
+}
+
+/* ★ 修改 3: 精準定位圖示位置 */
+.icon-sun {
+    /* 太陽放在左邊 (淺色模式時被圓球蓋住? 不，通常設計是圓球在太陽位置代表選中太陽) */
+    /* 依照你的邏輯：圓球在左 = 淺色 = 圓球要是太陽? 還是圓球旁邊顯示太陽? */
+    /* 這裡設定：圖示永遠固定在左右兩邊，圓球滑過去蓋住它 */
+    
+    left: 7px; /* (圓球26 - 字體14)/2 + 邊距2 ≈ 7~8px */
+    color: #fff;
+    text-shadow: 0 0 2px #FFD700;
+}
+
+.icon-moon {
+    right: 7px; /* 同上，確保居中 */
+}
+
+/* --- Global Toggle Button --- */
+.sidebar-toggle {
+    /* ★ 修改重點 3: 改為絕對定位，固定在左側 */
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%); /* 讓它垂直置中 */
+    
+    width: 40px;
+    height: 40px;
+    font-size: 26px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-main);
+    transition: background-color 0.2s;
+    z-index: 55;
+}
+
+.sidebar-toggle:hover {
+    background-color: var(--btn-hover);
 }
 
 /* --- Main View --- */
@@ -153,7 +296,7 @@ body.sidebar-closed {
     grid-area: main;
     background-color: var(--bg-body);
     position: relative;
-    overflow: auto; /* 迷宮很大時出現捲軸 */
+    overflow: auto;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -162,458 +305,321 @@ body.sidebar-closed {
 }
 
 /* =========================================
-   3. Sidebar Styles
+   3. Sidebar Styles - REFACTORED
    ========================================= */
 #sidebar {
     grid-area: sidebar;
-    width: 280px;
-    height: 100vh;
+    /* 寬度由 Grid 控制，這裡只要設定 100% 填滿 Grid Cell 即可 */
+    width: 100%; 
+    height: 100%;
     background-color: var(--bg-panel);
     border-right: 1px solid var(--border-color);
-    
-    /* 讓內部元素保持彈性佈局 */
     display: flex;
     flex-direction: column;
-    
-    /* 增加過渡效果，讓寬度變化滑順 */
-    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    flex-shrink: 0;
-    overflow: hidden;
-    z-index: 100;
-    
-    /* ★ 關鍵 1: 設定相對定位，讓裡面的絕對定位元素參考這裡 */
-    position: relative; 
-}
-
-/* 收折狀態 */
-#sidebar.collapsed {
-    width: 50px;
-}
-
-.sidebar-header {
-    /* 固定高度 */
-    height: 50px;
-    width: 100%;
-    flex-shrink: 0;
-    border-bottom: 1px solid var(--border-light);
-    
-    /* ★ 關鍵 2: 這裡也設相對定位 */
+    /* 移除 transition width，改由 body grid transition 控制 */
+    overflow: hidden; /* 確保縮小時內容不溢出 */
     position: relative;
-    
-    /* 不需要 Flexbox 來排按鈕了，因為按鈕要用飛的(絕對定位) */
-    display: block; 
-}
-
-.sidebar-toggle {
-    /* ★ 關鍵 3: 絕對定位 (Absolute Positioning) */
-    /* 這會讓按鈕脫離排版流，直接釘在左上角 */
-    position: absolute;
-    
-    /* 定位座標計算： */
-    /* 側邊欄收折寬度 50px，按鈕 40px */
-    /* (50 - 40) / 2 = 5px */
-    left: 5px;  /* 距離左邊 5px */
-    top: 5px;   /* 距離上面 5px (Header高50 - 按鈕40) / 2 */
-    
-    /* 固定按鈕尺寸 */
-    width: 40px;
-    height: 40px;
-
-    font-size: 26px;
-    
-    /* 讓圖示在圓圈內置中 */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    
-    margin: 0;
-    padding: 0;
-    
-    border: none;
-    background: transparent;
-    border-radius: 50%;
-    cursor: pointer;
-    color: var(--text-main);
-    
-    /* 確保按鈕在最上層 */
-    z-index: 10;
-}
-
-.sidebar-toggle:hover {
-    background-color: var(--btn-hover);
-}
-
-
-
-#sidebar .file-btn {
-    margin-left: auto;
-    margin-right: auto;
-    /* 如果希望按鈕不要完全貼邊，可以設定最大寬度並保留 margin */
-    /* width: calc(100% - 10px) !important; */ 
-    
-    /* 目前你的需求是「左右邊框都留一點距離」
-       因為父容器 .controls-content 已經有 padding: 15px
-       所以設定 width: 100% 就會自然留出這 15px 的邊距了。
-    */
+    z-index: 40; /* 比 Header 低一點 */
 }
 
 .sidebar-scroll-area {
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
-    transition: opacity 0.2s;
+    padding-top: 10px;
+    
+    /* 1. 預設給一點底部空間 */
+    padding-bottom: 20px; 
+    
     opacity: 1;
+    transition: opacity 0.2s;
+    
+    /* 優化手機捲動手感 */
+    -webkit-overflow-scrolling: touch; 
 }
 
-/* 收折時隱藏內容區 */
-#sidebar.collapsed .sidebar-scroll-area,
-body.sidebar-closed .sidebar-scroll-area {
+/* 當 Sidebar 被壓縮時隱藏內容 */
+body.sidebar-closed #sidebar .sidebar-scroll-area {
     opacity: 0;
     pointer-events: none;
     visibility: hidden;
 }
 
-/* 內容容器 */
-.controls-content {
-    padding: 15px;      /* 保持原本的 15px */
-    display: flex;
-    flex-direction: column;
-    gap: 10px;          /* 增加區塊間的距離 */
-}
-
-/* 控制群組與面板 */
-.input-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
-    background: rgba(0, 0, 0, 0.03); 
-    padding: 10px;
-    border-radius: 8px;
-    border: 1px solid var(--border-light);
-    width: 100%;
-    margin-bottom: 15px; /* ★ 新增：增加下方距離，避免跟縮放拉桿擠在一起 */
-}
-
-.file-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    border: 1px solid var(--border-light);
-    padding: 10px;
-    border-radius: 8px;
-    background-color: rgba(0,0,0,0.02);
-    margin-bottom: 10px;
-    animation: fadeIn 0.3s;
-}
-
-.control-group {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    
-    /* 新增卡片式外觀 */
-    background-color: rgba(0, 0, 0, 0.02); 
-    border: 1px solid var(--border-light);
-    border-radius: 8px;
-    padding: 15px; /* 內縮，讓裡面的拉桿不會貼邊 */
-    
-    margin-top: 5px;
-}
+/* 內部元件樣式 (保持原樣) */
+.controls-content { padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+.input-group { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: rgba(0, 0, 0, 0.03); padding: 10px; border-radius: 8px; border: 1px solid var(--border-light); width: 100%; margin-bottom: 15px; }
+.file-panel { display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--border-light); padding: 10px; border-radius: 8px; background-color: rgba(0,0,0,0.02); margin-bottom: 10px; animation: fadeIn 0.3s; }
+.control-group { display: flex; flex-direction: column; gap: 12px; background-color: rgba(0, 0, 0, 0.02); border: 1px solid var(--border-light); border-radius: 8px; padding: 15px; margin-top: 5px; }
 
 /* =========================================
-   4. Maze Grid & Visualization
+   4. Maze Grid & Visualization (Keep Original)
    ========================================= */
 .layout-wrapper {
     flex: 1;
     width: 100%;
     height: 100%;
-    overflow: hidden; /* 隱藏捲軸，改用拖曳邏輯 */
-    position: relative;
     background-color: var(--bg-body);
+    position: relative;
+    overflow: hidden; /* ★ 重要：把跑出去的迷宮藏起來 */
     
-    /* 預設游標 */
-    cursor: default; 
+    /* 讓內容預設居中 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
     
-    /* ★★★ 關鍵修改：使用 Grid 排版來對齊座標軸 ★★★ */
+    /* 禁止瀏覽器預設觸控行為 */
+    touch-action: none;
+    cursor: grab; /* 預設手型 */
+}
+
+.layout-wrapper.grabbing {
+    cursor: grabbing; /* 抓取時的手型 */
+}
+
+/* ✅ 新增：內層容器 (負責 Grid 排版與移動) */
+.maze-container {
     display: grid;
-    /* 定義兩欄：第1欄(Y軸寬度) 第2欄(迷宮寬度) */
+    /* 原本在 layout-wrapper 的 grid 設定搬來這裡 */
     grid-template-columns: max-content max-content;
-    /* 定義兩列：第1列(迷宮高度) 第2列(X軸高度) */
     grid-template-rows: max-content max-content;
-    
-    /* 讓整個迷宮區塊在畫面上置中 */
     justify-content: center;
     align-content: center;
     
-    /* 縮放變形的原點設為中心，或配合你的縮放邏輯調整 */
+    /* 移動的核心：Transform */
     transform-origin: center center;
+    /* 如果想要絲滑一點可以加 transition，但在拖曳時建議不要加太強的延遲 */
+    /* transition: transform 0.1s linear; */ 
 }
-
-/* 當按住空白鍵時，顯示「抓取手手」 */
-.layout-wrapper.grab-mode {
-    cursor: grab;
-}
-
-/* 當正在拖曳時，顯示「緊握手手」 */
-.layout-wrapper.grabbing {
-    cursor: grabbing;
-}
-
-/* Y軸：放在 第1列, 第1欄 */
-.y-axis {
-    grid-row: 1;
-    grid-column: 1;
-    
-    display: grid;
-    grid-template-rows: repeat(var(--rows), var(--cell-size));
-    align-items: center;
-    justify-items: end;
-    padding-right: 8px;
-    font-size: 12px;
-}
-/* X軸：放在 第2列, 第2欄 (迷宮正下方) */
-.x-axis-wrapper {
-    grid-row: 2;
-    grid-column: 2;
-    
-    display: grid;
-    grid-template-columns: repeat(var(--cols), var(--cell-size));
-    justify-items: center;
-    font-size: 12px;
-    margin-top: 5px;
-}
-.y-axis div, .x-axis-wrapper div {
-    color: var(--text-sub);
-    font-weight: bold;
-    /* 確保文字不會因為縮放而換行 */
-    white-space: nowrap; 
-}
-/* 迷宮本體：放在 第1列, 第2欄 */
-#maze-grid {
-    grid-row: 1;
-    grid-column: 2;
-
-    display: grid;
-    grid-template-columns: repeat(var(--cols), var(--cell-size));
-    grid-template-rows: repeat(var(--rows), var(--cell-size));
-    background-color: var(--bg-panel);
-    user-select: none;
-    -webkit-user-select: none;
-    position: relative;
-    
-    /* 加上陰影讓迷宮比較立體，比較容易分辨邊界 */
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
-}
+.layout-wrapper.grab-mode { cursor: grab; }
+.layout-wrapper.grabbing { cursor: grabbing; }
+.y-axis { grid-row: 1; grid-column: 1; display: grid; grid-template-rows: repeat(var(--rows), var(--cell-size)); align-items: center; justify-items: end; padding-right: 8px; font-size: 12px; }
+.x-axis-wrapper { grid-row: 2; grid-column: 2; display: grid; grid-template-columns: repeat(var(--cols), var(--cell-size)); justify-items: center; font-size: 12px; margin-top: 5px; }
+.y-axis div, .x-axis-wrapper div { color: var(--text-sub); font-weight: bold; white-space: nowrap; }
+#maze-grid { grid-row: 1; grid-column: 2; display: grid; grid-template-columns: repeat(var(--cols), var(--cell-size)); grid-template-rows: repeat(var(--rows), var(--cell-size)); background-color: var(--bg-panel); user-select: none; -webkit-user-select: none; position: relative; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
 #maze-grid.editing-wall .cell { cursor: crosshair; }
-
-/* Cell Styles */
-.cell {
-    width: var(--cell-size);
-    height: var(--cell-size);
-    border: 1px solid var(--grid-line); 
-    position: relative;
-    cursor: pointer;
-}
+.cell { width: var(--cell-size); height: var(--cell-size); border: 1px solid var(--grid-line); position: relative; cursor: pointer; transition: var(--cell-transition, background-color 0.15s ease-out); }
 .cell:hover { background-image: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.1)); }
-
-/* Walls */
+.cell.searching, .cell.path-node { transition: background-color 0.2s ease-in; }
 .wall-n { border-top: 2px solid var(--wall-color); }
 .wall-e { border-right: 2px solid var(--wall-color); }
 .wall-s { border-bottom: 2px solid var(--wall-color); }
 .wall-w { border-left: 2px solid var(--wall-color); }
-
-/* =========================================
-   ★ 新增：起點與終點的牆壁顏色覆寫 (黃色)
-   ========================================= */
-/* 情況 A: 使用者手動切換到 Dark Mode */
-[data-theme="dark"] .cell.is-start.wall-n, 
-[data-theme="dark"] .cell.is-goal.wall-n {     border-top-color: #FFD700 !important; }
-[data-theme="dark"] .cell.is-start.wall-e, 
-[data-theme="dark"] .cell.is-goal.wall-e {     border-right-color: #FFD700 !important; }
-[data-theme="dark"] .cell.is-start.wall-s, 
-[data-theme="dark"] .cell.is-goal.wall-s {     border-bottom-color: #FFD700 !important; }
-[data-theme="dark"] .cell.is-start.wall-w, 
-[data-theme="dark"] .cell.is-goal.wall-w {     border-left-color: #FFD700 !important; }
-
-/* Special Cells (Start/Goal) */
 .is-start { background-color: var(--start-bg) !important; }
 .is-goal { background-color: var(--goal-bg) !important; }
 .is-start::after { content: 'S'; color: white; font-weight: bold; font-size: 12px; position:absolute; inset:0; display:flex; justify-content:center; align-items:center;}
 .is-goal::after { content: 'G'; color: white; font-weight: bold; font-size: 12px; position:absolute; inset:0; display:flex; justify-content:center; align-items:center;}
-
-/* Animation States */
 .cell.searching { 
-    background-color: rgba(33, 150, 243, 0.3) !important; 
-    transition: background-color 0.2s; 
-}
-[data-theme="dark"] .cell.searching { background-color: #01579b !important; }
-
-.cell.current-head { 
-    background-color: #ff9800 !important; 
-    border: 2px solid #fff; 
-    z-index: 30; 
-}
-
-.cell.backtracking { 
-    background-color: #90a4ae !important; 
+    background-color: rgba(33, 150, 243, 0.5) !important; /* 淺藍色 */
     transition: background-color 0.1s; 
 }
-
-/* Weight/Cost Text */
-.cell-weight {
-    position: absolute; inset: 0; display: flex; justify-content: center; align-items: center;
-    font-size: 10px; color: var(--text-sub); 
-    z-index: 20 !important; 
-    pointer-events: none; 
-    font-weight: bold;
-    text-shadow: 1px 1px 0 rgba(255,255,255,0.8);
-    display: none;
+[data-theme="dark"] .cell.searching { background-color: #01579b !important; }
+.cell.current-head { background-color: #ff9800 !important; border: 2px solid #fff; z-index: 30; }
+/* 修改這一段 */
+.cell.backtracking { 
+    /* 1. 保持原樣大小 */
+    transform: none !important; 
+    border-radius: 0 !important;
+    
+    /* ★ 關鍵修正：刪除原本這裡的 border 設定 */
+    /* 不要寫 border: ... !important，這樣才能保留牆壁樣式 (.wall-n 等) */
+    
+    /* 2. 背景色：淡紅色 */
+    background-color: #ffcdd2 !important; 
+    
+    /* 3. 轉場效果 */
+    transition: background-color 0.2s;
+    
+    /* 確保裡面可以定位叉叉 */
+    position: relative;
+    z-index: 0; /* 確保不會蓋住邊框 */
 }
-[data-theme="dark"] .cell-weight { color: #fff; text-shadow: 1px 1px 0 rgba(0,0,0,0.8); }
 
-#maze-grid.show-weights .cell-weight {
+/* 4. 利用偽元素加一個「叉叉」 */
+.cell.backtracking::after {
+    content: "✕"; 
+    position: absolute;
+    inset: 0;
     display: flex;
+    justify-content: center;
+    align-items: center;
+    
+    color: #c62828;  /* 深紅色 */
+    font-size: 1.2em; 
+    font-weight: bold;
+    opacity: 0.6;   
+    
+    animation: fadeIn 0.2s ease-out;
 }
 
-/* SVG Layer */
+/* --- 深色模式微調 --- */
+[data-theme="dark"] .cell.backtracking { 
+    background-color: #4a1818 !important; /* 深暗紅底 */
+}
+/* 注意：這裡也不要加 border 設定，讓它自動顯示亮紅色的牆壁 */
+
+[data-theme="dark"] .cell.backtracking::after {
+    color: #ff5252; 
+    opacity: 0.8;
+}
+
+.cell-weight { position: absolute; inset: 0; display: flex; justify-content: center; align-items: center; font-size: 10px; color: var(--text-sub); z-index: 20 !important; pointer-events: none; font-weight: bold; text-shadow: 1px 1px 0 rgba(255,255,255,0.8); display: none; }
+[data-theme="dark"] .cell-weight { color: #fff; text-shadow: 1px 1px 0 rgba(0,0,0,0.8); }
+#maze-grid.show-weights .cell-weight { display: flex; }
 .maze-svg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+.path-line { fill: none; stroke-width: 2px; vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round; opacity: 0.9; filter: drop-shadow(0px 1px 1px rgba(0,0,0,0.3)); z-index: 10; }
+.path-dashed { fill: none; stroke-width: 1.5px; vector-effect: non-scaling-stroke; stroke-dasharray: 4, 4; stroke-linecap: round; stroke-linejoin: round; opacity: 0.7; z-index: 9; }
 
-.path-line { 
-    fill: none; stroke-width: 2px; vector-effect: non-scaling-stroke; 
-    stroke-linecap: round; stroke-linejoin: round; opacity: 0.9; 
-    filter: drop-shadow(0px 1px 1px rgba(0,0,0,0.3)); z-index: 10; 
-}
-.path-dashed { 
-    fill: none; stroke-width: 1.5px; vector-effect: non-scaling-stroke; 
-    stroke-dasharray: 4, 4; stroke-linecap: round; stroke-linejoin: round; 
-    opacity: 0.7; z-index: 9; 
-}
-
-/* Bottom Status Info */
+/* --- Info/Status Container --- */
 .info-container {
-    position: fixed; bottom: 20px; right: 20px;
-    background: var(--bg-panel); padding: 8px 15px;
-    border-radius: 8px; border: 1px solid var(--border-color);
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    position: fixed; 
+    bottom: 20px; 
+    right: 20px;
+    background-color: var(--bg-panel); 
+    padding: 8px 15px;
+    border-radius: 8px; 
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
     z-index: 60;
+    
+    /* 預設完全不透明 */
+    opacity: 1; 
+    transition: opacity 0.3s ease;
+    pointer-events: auto; /* 預設可以點擊選取文字 */
 }
+
+/* ❌ 刪除原本的 .info-container:hover {...} */
+
+/* ✅ 新增：由 JS 控制的重疊狀態 */
+.info-container.is-overlapping {
+    /* 當重疊時，變半透明 */
+    opacity: 0.2; 
+    
+    /* 讓滑鼠點擊穿透（這樣才能點到底下的迷宮格子） */
+    pointer-events: none; 
+}
+
 .status-text { font-size: 0.9em; color: var(--text-main); }
 
 /* =========================================
-   5. UI Components
+   5. UI Components (Keep Original)
    ========================================= */
-/* Inputs & Selects */
-input[type="number"], select { 
-    background: var(--bg-panel); 
-    color: var(--text-main); 
-    border: 1px solid var(--border-color); 
-    padding: 5px; 
-    border-radius: 4px; 
-}
-
-.theme-select, .lang-select {
-    padding: 5px;
-    border-radius: 4px;
-    border: 1px solid var(--border-color);
-    background: var(--bg-panel);
-    color: var(--text-main);
-}
-
-/* Sliders */
-.slider-container {
-    width: 100%;
-    display: flex;
-    align-items: center;
-}
+input[type="number"], select { background: var(--bg-panel); color: var(--text-main); border: 1px solid var(--border-color); padding: 5px; border-radius: 4px; }
+.theme-select, .lang-select { padding: 5px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-panel); color: var(--text-main); }
+.slider-container { width: 100%; display: flex; align-items: center; }
 .slider-container input { width: 100%; }
-
-/* Buttons */
-button {
-    padding: 8px 12px; 
-    cursor: pointer; 
-    border: 1px solid var(--border-color); 
-    border-radius: 6px;       
-    background-color: var(--btn-bg); 
-    color: var(--btn-text); 
-    transition: all 0.2s; 
-    font-size: 14px;
-    white-space: nowrap; 
-    flex: 1 1 auto; 
-    display: inline-flex;
-    justify-content: center;
-    align-items: center;
-    gap: 5px;
-}
+button { padding: 8px 12px; cursor: pointer; border: 1px solid var(--border-color); border-radius: 6px; background-color: var(--btn-bg); color: var(--btn-text); transition: all 0.2s; font-size: 14px; white-space: nowrap; flex: 1 1 auto; display: inline-flex; justify-content: center; align-items: center; gap: 5px; }
 button:hover { background-color: var(--btn-hover); }
-
-/* Button Variants */
 button.active { background-color: var(--active); color: white; border-color: var(--active); }
 button.primary { background-color: var(--primary); color: white; border: none; }
 button.primary:hover { background-color: var(--primary-hover); }
 button.danger { color: var(--danger); border-color: var(--danger); background: transparent; }
 button.danger:hover { background-color: var(--danger); color: white; }
-
-/* Special Button Groups */
-.btn-row { 
-    display: flex; 
-    flex-direction: row; 
-    justify-content: space-between;
-    gap: 8px; 
-    width: 100%; 
-}
+.btn-row { display: flex; flex-direction: row; justify-content: space-between; gap: 8px; width: 100%; }
 .btn-row button { flex: 1; }
-
-.file-btn {
-    width: 100% !important;        /* 佔滿容器寬度 */
-    text-align: center;            /* 文字置中 (原本是 left) */
-    margin-bottom: 8px;            /* 增加下方間距 */
-    padding: 10px 15px;            /* 增加內距讓按鈕看起來大一點 */
-    display: flex;
-    justify-content: center;       /* 內容水平置中 */
-    align-items: center;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05); /* 加一點陰影更有質感 */
-}
-
-/* Animations */
-@keyframes fadeIn { 
-    from { opacity: 0; transform: translateY(-5px); } 
-    to { opacity: 1; transform: translateY(0); } 
-}
+.file-btn { width: 100% !important; text-align: center; margin-bottom: 8px; padding: 10px 15px; display: flex; justify-content: center; align-items: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 
 /* =========================================
-   6. Responsive Design (Mobile)
+   6. Responsive Design (Mobile) - REFACTORED
    ========================================= */
 @media (max-width: 768px) {
     body {
-        /* 手機版改回上下堆疊 */
+        /* 手機版：永遠保持單欄，不管選單有沒有開 */
         grid-template-columns: 1fr;
         grid-template-rows: 50px 1fr;
         grid-template-areas: 
             "header"
             "main";
     }
-    
+
+    /* ★ 關鍵修復：覆蓋掉桌機版的設定 */
+    /* 桌機版說關閉時要變成 0 1fr，但手機版我們強迫它保持 1fr */
+    body.sidebar-closed {
+        grid-template-columns: 1fr;
+    }
+
+    .top-bar {
+        padding-left: 60px; /* 留位置給左上角的浮動按鈕 */
+        justify-content: flex-start; /* 確保標題靠左 */
+    }
+
+    /* Mobile: Sidebar 變成浮動抽屜 */
     #sidebar {
         position: fixed;
-        left: 0; top: 50px; bottom: 0;
+        top: 50px;
+        bottom: 0;
+        left: 0;
         width: 280px;
-        transform: translateX(-100%); /* 預設藏在左邊 */
-        transition: transform 0.3s ease;
+        
+        /* 3. ★ 確保容器本身不捲動，只讓內部的 scroll-area 捲動 */
+        display: flex;
+        flex-direction: column;
+        overflow: hidden; 
+        
+        /* 其他原本的樣式... */
+        background-color: var(--bg-panel);
         border-right: 1px solid var(--border-color);
         box-shadow: 2px 0 10px rgba(0,0,0,0.2);
-    }
-    
-    /* Body 沒有 sidebar-closed 時 (代表打開) -> 移入視窗 */
-    body:not(.sidebar-closed) #sidebar {
+        z-index: 100;
         transform: translateX(0);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    
-    /* Body 有 sidebar-closed 時 (代表關閉) -> 移出視窗 */
+
+    /* Mobile: 當 Sidebar 關閉時，移出畫面 */
     body.sidebar-closed #sidebar {
         transform: translateX(-100%);
-        width: 280px; /* 手機版寬度保持，只是位置移動 */
+        width: 280px; /* 保持寬度，只是移出去了 */
     }
-    
-    .main-view { padding: 10px; }
+
+    .sidebar-scroll-area {
+        /* 2. ★ 關鍵修正：手機版底部加厚 */
+        /* 這樣可以確保最後一個按鈕能被「捲動」到手指點得到的地方，不會被瀏覽器底下的 bar 擋住 */
+        padding-bottom: 100px; 
+    }
+
+    /* Mobile: 內容淡出 */
+    body.sidebar-closed .sidebar-scroll-area {
+        opacity: 0; 
+    }
+
+    /* 手機版按鈕：浮在左上角 (Absolute/Fixed) */
+    .sidebar-toggle {
+        position: fixed;
+        top: 5px;
+        left: 10px;
+        z-index: 101;
+        margin: 0;
+        background-color: transparent;
+        
+        /* ★ 關鍵修正：取消電腦版的垂直置中偏移 */
+        transform: none; 
+    }
+    /* ★ 新增：當側邊欄打開時，在主畫面上蓋一層半透明黑布 
+       解釋：body:not(.sidebar-closed) 代表「側邊欄開啟時」
+    */
+    body:not(.sidebar-closed) .main-view::after {
+        content: "";
+        position: fixed; /* 強制覆蓋全螢幕 */
+        top: 0; left: 0; right: 0; bottom: 0;
+        
+        background-color: rgba(0, 0, 0, 0.4); /* 40% 透明度的黑色 */
+        backdrop-filter: blur(2px); /* (選用) 讓背景稍微模糊，質感更好 */
+        
+        z-index: 99; /* 層級設定：
+                        Sidebar 是 100
+                        Toggle按鈕 是 101
+                        所以這個遮罩 99 會剛好蓋住迷宮，但在選單下面 */
+        
+        /* 讓這層遮罩可以被點擊 */
+        pointer-events: auto; 
+        
+        /* 增加淡入動畫 */
+        animation: fadeInMask 0.3s ease;
+    }
+}
+
+/* 定義淡入動畫 (如果你的 CSS 裡還沒定義過) */
+@keyframes fadeInMask {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }

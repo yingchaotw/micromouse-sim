@@ -14,30 +14,42 @@ function stopAnimation() {
 
 function getDelay() {
     const slider = document.getElementById('speed-slider');
-    if (!slider) return 30; // 預設值
+    if (!slider) return 30; 
 
-    // 拉桿數值 1 (最慢) ~ 100 (最快)
-    // 我們要將其轉換為 延遲毫秒數 (ms)
-    // 1 -> 500ms (慢)
-    // 100 -> 0ms (極速)
+    // 取得數值 1 (慢) ~ 100 (快)
+    let val = parseInt(slider.value);
     
-    const val = parseInt(slider.value);
+    // 如果拉到最底，直接 0ms (極速)
+    if (val >= 98) return 0;
+
+    // 平滑公式：使用平方曲線讓速度感更自然
+    // 當 val = 1 時，(99/99)^2 * 500 = 500ms
+    // 當 val = 50 時，(50/99)^2 * 500 ≈ 127ms (原本的斷層消失了)
+    // 當 val = 90 時，(10/99)^2 * 500 ≈ 5ms
     
-    // 簡單的反比公式：數值越大，延遲越小
-    // 可以依照手感調整這裡的公式
-    // 例如： 500 - (val * 5)
+    const maxDelay = 500; // 最慢速度 (毫秒)
+    const factor = (100 - val) / 99; // 轉成 1.0 ~ 0.0 的比例
     
-    // 這裡使用非線性映射讓手感更好：
-    // 快的時候很細微，慢的時候間隔大
-    if (val >= 90) return 0;   // 極速模式 (無延遲)
-    if (val >= 50) return 100 - val; // 10ms ~ 50ms
-    return 550 - (val * 5); // 50ms ~ 500ms
+    return Math.floor(maxDelay * factor * factor);
 }
 
 // 統一入口：啟動動畫
 function startAnimation(type) {
     stopAnimation();
     
+    // ★ 新增：根據速度決定是否開啟平滑動畫
+    const delay = getDelay();
+    const gridEl = document.getElementById('grid-container'); // 假設你的迷宮容器 ID
+    if (gridEl) {
+        if (delay < 10) {
+            // 速度太快時，移除 CSS transition 以免畫面殘影
+            gridEl.style.setProperty('--cell-transition', 'none');
+        } else {
+            // 速度適中時，啟用平滑過渡
+            gridEl.style.setProperty('--cell-transition', 'background-color 0.15s ease-out');
+        }
+    }
+
     mazeApp.solutionPath = [];
     mazeApp.secondaryPath = [];
     mazeApp.weightMap = new Array(mazeApp.width * mazeApp.height).fill(Infinity);

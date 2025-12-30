@@ -7,15 +7,25 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxNiAxNic+PHBhdGggZmlsbD0nIzI4YTc0NScgZD0nTTIgMmgxMnYxMkgyVjJ6bTIgMnY4aDhWNEg0em0yIDJoNHY0SDZWNnonLz48L3N2Zz4=">
     <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="sidebar-open">
 
     <header class="top-bar">
+        <button id="sidebar-toggle" class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle Sidebar" aria-label="Toggle Sidebar">
+            ☰
+        </button>
+
         <h1 style="margin: 0; font-size: 1.2rem; margin-right: auto;" data-i18n="title">電腦鼠迷宮設定器</h1>
-        <select id="theme-select" class="theme-select" onchange="toggleTheme(this.value)">
-            <option value="auto">🌗 Auto</option>
-            <option value="light">☀️ Light</option>
-            <option value="dark">🌙 Dark</option>
-        </select>
+                
+        <div class="theme-switch-wrapper">
+            <label class="theme-switch" for="checkbox-theme" title="切換深色/淺色模式">
+                <input type="checkbox" id="checkbox-theme" onchange="toggleThemeSwitch(this)">
+                <div class="slider">
+                    <span class="icon-sun">☀️</span>
+                    <span class="icon-moon">🌙</span>
+                </div>
+            </label>
+        </div>
+        
         <select id="lang-select" class="lang-select" onchange="changeLanguage(this.value)">
             <option value="zh-TW">🇹🇼 繁體中文</option>
             <option value="en">🇺🇸 English</option>
@@ -23,14 +33,7 @@
         </select>
     </header>
 
-    <div class="controls" id="sidebar">
-    
-        <div class="sidebar-header">
-            <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle Sidebar">
-                ☰
-            </button>
-        </div>
-
+    <aside id="sidebar">
         <div class="sidebar-scroll-area">
             <div class="sidebar-content">
         
@@ -123,8 +126,6 @@
                     </div>
                 </div>
 
-            <!-- <div style="width: 1px; height:20px; background: var(--border-color); margin: 0 5px;"></div> -->
-
                 <div class="input-group" style="flex-direction: row;">
                     <button id="mode-wall" class="mode-btn active" onclick="setMode('wall')" data-i18n="btn_wall">編輯牆</button>
                     <button id="mode-start" class="mode-btn" onclick="setMode('start')" data-i18n="btn_start">設起點</button>
@@ -138,30 +139,26 @@
 
             </div>
         </div>
-        </aside>
-    </div>
+    </aside>
 
     <div class="main-view">
-        
         <div class="layout-wrapper">
-            <div class="y-axis" id="y-axis"></div>
-            <div id="maze-grid"></div>
-            <div class="x-axis-wrapper" id="x-axis"></div>
+            <div id="maze-container" class="maze-container">
+                <div class="y-axis" id="y-axis"></div>
+                <div id="maze-grid"></div>
+                <div class="x-axis-wrapper" id="x-axis"></div>
+            </div>
         </div>
 
         <div class="info-container">
             <div class="status-text" id="status-text" data-i18n="status_loading">Loading...</div>
         </div>
-
     </div>
 
     <script src="js/maze_core.js"></script>
-
     <script src="js/maps_index.js"></script> 
     <script src="js/i18n.js"></script>       
     <script src="js/setup.js"></script>
-    <!-- <script src="js/image_importer.js"></script>  -->
-
     <script src="js/algos/flood_fill.js"></script>
     <script src="js/algos/bfs.js"></script>
     <script src="js/algos/dfs.js"></script>
@@ -169,11 +166,11 @@
     <script src="js/algos/dijkstra.js"></script>
     <script src="js/algos/manhattan.js"></script>
     <script src="js/algos/wall_follower.js"></script>
-
     <script src="js/utils/path_analyzer.js"></script>
     <script src="js/ui/interactions.js"></script>
     <script src="js/ui/renderer.js"></script>
     <script src="js/ui/animator.js"></script>
+    
     <script src="js/ui_control.js"></script>
 
 </body>

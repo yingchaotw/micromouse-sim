@@ -11,12 +11,74 @@ function resetView() {
     if(domGrid) domGrid.style.transform = `translate(0px, 0px)`;
 }
 
-// 主題切換
-function toggleTheme(mode) {
-    if (mode === 'auto') {
-        document.documentElement.removeAttribute('data-theme');
+// =========================================
+// 主題切換邏輯 (Auto Sync Version)
+// =========================================
+document.addEventListener('DOMContentLoaded', () => {
+    const checkbox = document.getElementById('checkbox-theme');
+    // 定義系統偏好偵測器
+    const systemDarkMode = window.matchMedia('(prefers-color-scheme: dark)');
+
+    // 1. 初始化函式：決定現在該用什麼主題
+    function applyInitialTheme() {
+        const savedTheme = localStorage.getItem('theme'); // 讀取使用者設定
+        const isSystemDark = systemDarkMode.matches;      // 讀取系統設定
+
+        // 邏輯：
+        // A. 如果有存檔 (dark) -> 用 dark
+        // B. 如果沒存檔 且 系統是 dark -> 用 dark
+        // C. 其他 -> 用 light
+        if (savedTheme === 'dark' || (!savedTheme && isSystemDark)) {
+            setTheme('dark', false); // false 代表不要寫入 localStorage (若是自動判斷的話)
+        } else {
+            setTheme('light', false);
+        }
+    }
+
+    // 2. 執行初始化
+    applyInitialTheme();
+
+    // 3. 【關鍵】監聽系統主題變化 (當使用者切換作業系統設定時)
+    // 只有在使用者「沒有手動設定過 (localStorage 為空)」時，才自動同步
+    systemDarkMode.addEventListener('change', (e) => {
+        if (!localStorage.getItem('theme')) {
+            const newTheme = e.matches ? 'dark' : 'light';
+            setTheme(newTheme, false);
+        }
+    });
+
+    // 內部 helper：統一設定 DOM 與 Checkbox 狀態
+    function setTheme(themeName, saveToStorage = false) {
+        document.documentElement.setAttribute('data-theme', themeName);
+        
+        // 同步 Checkbox 狀態 (深色=勾選, 淺色=不勾)
+        if (checkbox) {
+            checkbox.checked = (themeName === 'dark');
+        }
+
+        // 只有手動切換時才存入 localStorage
+        if (saveToStorage) {
+            localStorage.setItem('theme', themeName);
+        }
+    }
+
+    // 將 setTheme 綁定到全域 (如果 toggleThemeSwitch 是 inline onclick 呼叫的話)
+    // 或者你可以直接修改下方的 toggleThemeSwitch 函式
+    window.internalSetTheme = setTheme; 
+});
+
+// 4. 使用者手動切換 (綁定在 Checkbox 的 onchange)
+function toggleThemeSwitch(checkbox) {
+    const isChecked = checkbox.checked;
+    const themeName = isChecked ? 'dark' : 'light';
+    
+    // 呼叫內部設定並強制儲存
+    if (window.internalSetTheme) {
+        window.internalSetTheme(themeName, true);
     } else {
-        document.documentElement.setAttribute('data-theme', mode);
+        // Fallback (如果 DOMContentLoaded 還沒跑完)
+        document.documentElement.setAttribute('data-theme', themeName);
+        localStorage.setItem('theme', themeName);
     }
 }
 

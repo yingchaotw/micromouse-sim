@@ -164,19 +164,15 @@ function setMode(mode) {
 
 
 function toggleSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    sidebar.classList.toggle('collapsed');
-    
-    // 為了讓這功能更像 Gemini，我們可以切換按鈕的圖示
-    // (非必要，但體驗較好)
-    
-    const btn = document.querySelector('.sidebar-toggle');
-    if (sidebar.classList.contains('collapsed')) {
-        btn.innerText = '☰'; // 或者 '»'
-    } else {
-        btn.innerText = '☰'; // 或者 '«'
-    }
-    
+    // 1. 核心動作：切換 Body 的 class
+    // CSS 會偵測到這個 class，然後自動把 grid-template-columns 變成 0
+    document.body.classList.toggle('sidebar-closed');
+
+    // 2. (建議加入) 強制觸發 resize 事件
+    // 因為右邊的主畫面變寬了，你的迷宮 Canvas 可能需要重新計算大小
+    setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+    }, 350); // 延遲 350ms 等待 CSS 動畫結束後再重繪
 }
 
 // ★★★ 新增：迷宮拖曳功能 (Pan) ★★★
@@ -267,3 +263,206 @@ function initSpeedSlider() {
     // 初始化 (頁面剛載入時先顯示一次)
     update();
 }
+
+function checkInfoOverlap() {
+    const infoBox = document.querySelector('.info-container');
+    const mazeGrid = document.getElementById('maze-grid');
+
+    if (!infoBox || !mazeGrid) return;
+
+    // 1. 取得兩個元素的矩形範圍 (位置與大小)
+    const infoRect = infoBox.getBoundingClientRect();
+    const mazeRect = mazeGrid.getBoundingClientRect();
+
+    // 2. 判斷是否重疊 (AABB Collision Detection)
+    // 只要有一邊沒碰到，就是沒重疊
+    const isOverlapping = !(
+        infoRect.right < mazeRect.left || 
+        infoRect.left > mazeRect.right || 
+        infoRect.bottom < mazeRect.top || 
+        infoRect.top > mazeRect.bottom
+    );
+
+    // 3. 根據結果切換 Class
+    if (isOverlapping) {
+        infoBox.classList.add('is-overlapping');
+    } else {
+        infoBox.classList.remove('is-overlapping');
+    }
+}
+
+// 監聽會改變版面的事件，觸發檢查
+window.addEventListener('resize', checkInfoOverlap);
+window.addEventListener('scroll', checkInfoOverlap); // 如果你的頁面會捲動
+
+// 使用 ResizeObserver 監測迷宮大小變化 (例如縮放、生成新地圖時)
+const mazeObserver = new ResizeObserver(() => {
+    checkInfoOverlap();
+});
+
+// 等 DOM 載入後啟動監聽
+document.addEventListener('DOMContentLoaded', () => {
+    const mazeGrid = document.getElementById('maze-grid');
+    if (mazeGrid) {
+        mazeObserver.observe(mazeGrid);
+        
+        // 為了保險，同時監聽 body 大小變化 (因為 sidebar 開關會改變版面)
+        mazeObserver.observe(document.body);
+    }
+});
+
+/* =========================================
+   Mobile Pinch-to-Zoom (手機雙指縮放)
+   ========================================= */
+document.addEventListener('DOMContentLoaded', () => {
+    const layoutWrapper = document.querySelector('.layout-wrapper');
+    const mazeContainer = document.getElementById('maze-container'); // 剛剛新增的容器
+    const zoomSlider = document.getElementById('zoom-slider');
+
+    if (!layoutWrapper || !mazeContainer || !zoomSlider) return;
+
+    // --- 狀態變數 ---
+    let state = {
+        isDragging: false,
+        startX: 0,
+        startY: 0,
+        currentX: 0,  // 目前的平移 X
+        currentY: 0,  // 目前的平移 Y
+        
+        // 縮放相關
+        initialDist: 0,
+        initialZoom: 30
+    };
+
+    // --- 輔助函式：更新 CSS Transform ---
+    const updateTransform = () => {
+        // 我們只移動容器，不縮放容器 (因為縮放是改變 Cell Size)
+        // 使用 translate3d 開啟硬體加速
+        mazeContainer.style.transform = `translate3d(${state.currentX}px, ${state.currentY}px, 0)`;
+    };
+
+    // ============================
+    // 1. 觸控事件 (Mobile Touch)
+    // ============================
+
+    layoutWrapper.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+            // [單指] 開始平移
+            state.isDragging = true;
+            // 記錄點擊位置與當前偏移量的差值
+            state.startX = e.touches[0].clientX - state.currentX;
+            state.startY = e.touches[0].clientY - state.currentY;
+            layoutWrapper.classList.add('grabbing');
+        } 
+        else if (e.touches.length === 2) {
+            // [雙指] 開始縮放
+            state.isDragging = false; // 雙指時停止平移
+            state.initialDist = getDistance(e.touches[0], e.touches[1]);
+            state.initialZoom = parseFloat(zoomSlider.value);
+        }
+    }, { passive: false });
+
+    layoutWrapper.addEventListener('touchmove', (e) => {
+        e.preventDefault(); // 防止畫面捲動
+
+        if (e.touches.length === 1 && state.isDragging) {
+            // [單指] 執行平移
+            const x = e.touches[0].clientX;
+            const y = e.touches[0].clientY;
+
+            state.currentX = x - state.startX;
+            state.currentY = y - state.startY;
+
+            requestAnimationFrame(updateTransform);
+        } 
+        else if (e.touches.length === 2) {
+            // [雙指] 執行縮放
+            const currentDist = getDistance(e.touches[0], e.touches[1]);
+            if (state.initialDist > 0) {
+                const scale = currentDist / state.initialDist;
+                let newZoom = state.initialZoom * scale;
+
+                // 限制範圍
+                const min = parseFloat(zoomSlider.min);
+                const max = parseFloat(zoomSlider.max);
+                if (newZoom < min) newZoom = min;
+                if (newZoom > max) newZoom = max;
+
+                // 更新 Slider 與迷宮大小
+                zoomSlider.value = newZoom;
+                if (typeof updateZoom === 'function') {
+                    updateZoom(newZoom);
+                }
+            }
+        }
+    }, { passive: false });
+
+    layoutWrapper.addEventListener('touchend', () => {
+        state.isDragging = false;
+        layoutWrapper.classList.remove('grabbing');
+        state.initialDist = 0; // 重置縮放距離
+    });
+
+    // ============================
+    // 2. 滑鼠事件 (Desktop Mouse) - 讓電腦版也能拖曳
+    // ============================
+    
+    layoutWrapper.addEventListener('mousedown', (e) => {
+        state.isDragging = true;
+        state.startX = e.clientX - state.currentX;
+        state.startY = e.clientY - state.currentY;
+        layoutWrapper.classList.add('grabbing');
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!state.isDragging) return;
+        e.preventDefault();
+        
+        state.currentX = e.clientX - state.startX;
+        state.currentY = e.clientY - state.startY;
+        
+        requestAnimationFrame(updateTransform);
+    });
+
+    window.addEventListener('mouseup', () => {
+        state.isDragging = false;
+        layoutWrapper.classList.remove('grabbing');
+    });
+
+    // --- 工具函式 ---
+    function getDistance(touch1, touch2) {
+        return Math.hypot(
+            touch1.clientX - touch2.clientX,
+            touch1.clientY - touch2.clientY
+        );
+    }
+});
+
+/* =========================================
+   Mobile: Click Outside to Close Sidebar
+   (手機版：點擊迷宮區域自動收合選單)
+   ========================================= */
+document.addEventListener('DOMContentLoaded', () => {
+    const mainView = document.querySelector('.main-view');
+
+    if (mainView) {
+        mainView.addEventListener('click', (e) => {
+            // 1. 檢查是否為手機版 (寬度 < 768px)
+            const isMobile = window.innerWidth <= 768;
+            
+            // 2. 檢查側邊欄目前是否「開啟」
+            // (我們定義: body 沒有 'sidebar-closed' class 代表開啟)
+            const isSidebarOpen = !document.body.classList.contains('sidebar-closed');
+
+            // 3. 如果是手機且選單開著，就執行收合
+            if (isMobile && isSidebarOpen) {
+                // 防止這一下點擊穿透下去觸發迷宮畫牆 (重要!)
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // 呼叫原本的切換函式
+                toggleSidebar();
+            }
+        });
+    }
+});

@@ -5,19 +5,22 @@ A lightweight, high-performance web-based simulator for **Micromouse** maze desi
 ## 🚀 Live Demo
 
 **[Click here to try the Simulator](https://yingchaotw.github.io/micromouse-sim/)**
-*(Replace with your actual GitHub Pages link)*
 
 ---
 
 ## ✨ Key Features
 
-### 🛠 Advanced Maze Editing
+### 🎨 UI/UX & Interactions
 
-* **🖱️ Drag-to-Draw:** Click and drag to quickly draw or erase walls (supports touch and mouse).
-* **Dynamic Sizing:** Support for standard 16x16 mazes or custom sizes (up to **128x128**).
-* **⚡ Quick Presets:** Instant switch between **Classic (16x16)** and **Half-Size (32x32)**.
-* **Start & Goal:** Customizable start position and multiple goal cells (supports 2x2 central goals).
-* **💾 Optimized Storage:** Maps are saved as **Hexadecimal Strings** in `.json` format to reduce file size by ~60%.
+* **📱 Mobile-First Design:**
+    * **Responsive Sidebar:** Slide-out drawer on mobile with backdrop dimming and "click-to-close" logic.
+    * **Global Toggle:** Decoupled sidebar toggle button located in the global header.
+* **👆 Advanced Gestures:**
+    * **Pinch-to-Zoom:** Native-like pinch zooming on touch devices.
+    * **Pan & Drag:** Move the maze view freely using touch (mobile) or mouse drag (desktop).
+* **🌗 Smart Theme Toggle:** Animated Sun/Moon switch for Dark/Light mode.
+* **✨ Adaptive Overlay:** Status info box automatically fades to transparent when overlapping with the maze grid.
+* **🎞️ Enhanced Visualization:** New backtracking animation (shrinking nodes) for clearer DFS execution.
 
 ### ⚡ High Performance & Architecture
 
@@ -121,8 +124,10 @@ git clone https://github.com/yingchaotw/micromouse-sim.git
 
 1. **Setup:** Select a size preset (16x16 / 32x32) or enter custom dimensions.
 2. **Draw Walls:**
-* Select **"Edit Wall"** mode.
-* **Drag** your mouse across grid lines to draw walls continuously.
+   * Select **"Edit Wall"** mode.
+   * **Draw:** Click and drag across grid lines.
+   * **Move/Pan:** Click and drag on empty space (Desktop) or use one finger (Mobile) to pan the view.
+   * **Zoom:** Use Mouse Wheel (Desktop) or Pinch gesture (Mobile).
 
 
 3. **Configure:** Set **Start (S)** and **Goal (G)** points.
@@ -131,9 +136,6 @@ git clone https://github.com/yingchaotw/micromouse-sim.git
 * Check **"🎬 Animate"** for visualization.
 * Adjust the **Speed Slider** to control playback.
 * Click **Run**.
-
-
-5. **Analyze:** View path steps and turns at the bottom status bar.
 
 ---
 
