@@ -164,15 +164,37 @@ function setMode(mode) {
 
 
 function toggleSidebar() {
-    // 1. 核心動作：切換 Body 的 class
-    // CSS 會偵測到這個 class，然後自動把 grid-template-columns 變成 0
+    // 1. 切換 CSS Class (控制選單開關)
     document.body.classList.toggle('sidebar-closed');
 
-    // 2. (建議加入) 強制觸發 resize 事件
-    // 因為右邊的主畫面變寬了，你的迷宮 Canvas 可能需要重新計算大小
+    // 2. 判斷是否為手機版
+    const isMobile = window.innerWidth <= 768;
+    
+    // 判斷側邊欄是否變為「關閉 (隱藏)」狀態
+    // 如果 body 有 sidebar-closed，代表側邊欄現在是關起來的
+    const isSidebarClosed = document.body.classList.contains('sidebar-closed');
+
+    if (isMobile) {
+        if (!isSidebarClosed) {
+            // 狀態：開啟選單 -> 暫停動畫
+            if (typeof pauseAnimation === 'function') {
+                pauseAnimation();
+            }
+        } else {
+            // 狀態：關閉選單 -> 恢復動畫
+            if (typeof resumeAnimation === 'function') {
+                resumeAnimation();
+            }
+        }
+    }
+
+    // 3. 只更新必要的 UI，不要觸發全域 resize 事件！
+    // 這樣可以避免 mazeApp 被重置
     setTimeout(() => {
-        window.dispatchEvent(new Event('resize'));
-    }, 350); // 延遲 350ms 等待 CSS 動畫結束後再重繪
+        if (typeof checkInfoOverlap === 'function') {
+            checkInfoOverlap();
+        }
+    }, 350); // 等待 CSS 動畫結束
 }
 
 // ★★★ 新增：迷宮拖曳功能 (Pan) ★★★
@@ -219,6 +241,9 @@ function initPanHandler() {
         // 更新捲動軸 (反向移動才有拖曳感)
         container.scrollLeft = scrollLeft - walkX;
         container.scrollTop = scrollTop - walkY;
+
+        // ★★★ 新增這行：平移時檢查是否重疊 ★★★
+        if (typeof checkInfoOverlap === 'function') checkInfoOverlap();
     });
 
     // 3. 放開或離開 (停止拖曳)
@@ -339,6 +364,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // 我們只移動容器，不縮放容器 (因為縮放是改變 Cell Size)
         // 使用 translate3d 開啟硬體加速
         mazeContainer.style.transform = `translate3d(${state.currentX}px, ${state.currentY}px, 0)`;
+
+        // ★★★ 新增這行：Transform 改變位置時檢查是否重疊 ★★★
+        if (typeof checkInfoOverlap === 'function') checkInfoOverlap();
     };
 
     // ============================

@@ -296,10 +296,39 @@ function runSelectedAlgo() {
     const select = document.getElementById('algo-select');
     const type = select.value;
 
-    if (useAnim) {
-        startAnimation(type);   // ★ 呼叫動畫模組 (animator.js)
+    // 定義核心執行邏輯 (包成一個函式)
+    const execute = () => {
+        if (useAnim) {
+            // 呼叫動畫模組 (animator.js)
+            if (typeof startAnimation === 'function') startAnimation(type);
+        } else {
+            // 呼叫 Worker (原本的邏輯)
+            runAlgo(type); 
+        }
+    };
+
+    // --- 手機版優化邏輯 ---
+    
+    // 1. 判斷是否為手機版 (寬度 <= 768px)
+    const isMobile = window.innerWidth <= 768;
+    
+    // 2. 判斷側邊欄是否開啟 (body 沒有 sidebar-closed 代表開啟)
+    const isSidebarOpen = !document.body.classList.contains('sidebar-closed');
+
+    if (isMobile && isSidebarOpen) {
+        // 如果是手機且選單開著：
+        
+        // A. 先關閉選單
+        toggleSidebar();
+
+        // B. 等待 CSS 動畫結束 (約 350ms) 後再執行演算法
+        // 這樣使用者才看得到開頭
+        setTimeout(() => {
+            execute();
+        }, 360); 
     } else {
-        runAlgo(type);          // ★ 呼叫 Worker (原本的邏輯)
+        // 電腦版或選單已關閉：直接執行
+        execute();
     }
 }
 

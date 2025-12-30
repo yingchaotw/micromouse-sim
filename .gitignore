@@ -9,6 +9,7 @@ __pycache__/
 
 # 忽略 tools 資料夾內的圖片 (只保留腳本)
 tools/build/
+tools/result/
 tools/**/**.jpg
 tools/**/**.png
 

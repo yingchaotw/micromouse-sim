@@ -1,15 +1,25 @@
-# Micromouse Maze Image Converter
+# Micromouse Maze Image Converter & Editor
 
-A Python tool to convert physical maze photographs into JSON format compatible with Micromouse simulators. It features auto-cropping, grid alignment visualization, and bidirectional wall consistency checks to ensure accurate map generation.
+A Python tool to convert physical maze photographs into JSON format compatible with Micromouse simulators. It features **automatic processing** followed by an **interactive GUI editor**, allowing you to verify walls, fix detection errors, and set goal coordinates visually.
+
+## ✨ Key Features
+
+* **Auto-Detection:** Automatically determines maze size (16x16 or 32x32) based on the filename.
+* **Interactive Editor:** A GUI window overlays detected walls on your original image.
+    * **Left Click:** Toggle walls (with bidirectional sync).
+    * **Right Click:** Set/Unset Goal cells.
+* **Smart Coordinates:** Automatically flips Y-axis coordinates for Goals to match Micromouse simulator standards.
+* **Auto-Crop & Align:** Automatically removes white borders and aligns the grid.
 
 ## 🚀 Prerequisites
 
 * **Python 3.8** or higher
 * `pip` (Python package installer)
+* `tkinter` (Usually included with Python standard library)
 
 ## 🛠️ Installation & Setup
 
-It is recommended to run this script in a virtual environment to avoid conflicts.
+It is recommended to run this script in a virtual environment.
 
 ### 1. Create a Virtual Environment
 
@@ -45,11 +55,9 @@ source venv/bin/activate
 
 
 
-*(Once activated, you should see `(venv)` at the beginning of your terminal prompt.)*
-
 ### 3. Install Dependencies
 
-Install the required packages using `requirements.txt`:
+Install the required packages (Pillow, NumPy):
 
 ```bash
 pip install -r requirements.txt
@@ -60,41 +68,55 @@ pip install -r requirements.txt
 
 ## 🏃‍♂️ Usage
 
-1. Place your maze image (e.g., `maze.png` or `photo.jpg`) in the project folder.
-2. Run the script:
+### 1. Prepare Your Image
+
+Place your maze photo in the project folder. **Name your file accordingly to auto-set the size:**
+
+* To generate a **32x32** map: Include `32` in the filename (e.g., `maze_32.png`, `contest_32.jpg`).
+* To generate a **16x16** map: Include `16` in the filename (e.g., `maze_16.png`).
+* *Default: 16x16 if no number is found.*
+
+### 2. Run the Script
 
 ```bash
-# Default usage (looks for 'maze.png' by default)
-python maze_converter.py
-
-# Or specify a custom image file
-python maze_converter.py my_maze_photo.jpg
+# Example:
+python maze_converter.py maze_32.png
 
 ```
 
-3. **Check the Output:**
-* **`maze_output.json`**: The converted JSON file.
-* **`debug_visual.png`**: A debugging image showing the detected walls (red lines) overlaid on the original image.
+### 3. Interactive Editing (The GUI)
+
+A window will appear showing your image with red wall lines overlaid.
+
+* **🖱️ Left Click (Walls):** Click on any wall edge to toggle it. If the auto-detection missed a wall, click to add it. If it detected a shadow as a wall, click to remove it.
+* **🖱️ Right Click (Goals):** Click on a cell to mark it as a Goal.
+* Goal cells will be highlighted in **Green**.
+* *Note: For 16x16 maps, the center 4 cells are marked by default.*
 
 
 
-## ⚙️ Configuration
+### 4. Save
 
-You can adjust the following variables inside `maze_converter.py` to improve accuracy:
+Click the **"Confirm & Save JSON"** button at the bottom.
+The file will be saved in the `result/` folder (e.g., `result/maze_32.json`).
 
-* **`MAZE_SIZE`**: Set to `16` (Classic) or `32` (Half-size).
+---
+
+## ⚙️ Configuration (Optional)
+
+You can modify variables at the top of `maze_converter.py` if needed:
+
 * **`WALL_SENSITIVITY`** (0-255):
-* Higher value (e.g., `220`) = More sensitive (detects faint walls).
-* Lower value (e.g., `180`) = Stricter (reduces noise).
+* Higher (e.g., `220`): More sensitive (good for faint lines).
+* Lower (e.g., `180`): Stricter (good for noisy images).
 
 
-* **`OFFSET_X` / `OFFSET_Y**`: Adjust these if the grid is slightly misaligned in the debug image.
 
 ---
 
 ## 🛑 Deactivate
 
-To exit the virtual environment when you are done:
+To exit the virtual environment:
 
 ```bash
 deactivate

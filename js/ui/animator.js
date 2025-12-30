@@ -1,83 +1,62 @@
 // js/ui/animator.js
 
-// 停止並清除當前的動畫計時器
+// 用來儲存當前正在執行的 "下一步" 函式，以便恢復時使用
+window.currentStepFunc = null;
+
+// ===========================================
+// 1. 核心控制：停止、暫停、恢復
+// ===========================================
+
+// 【完全停止】：清除計時器、清除狀態、清除畫面 (按下 Reset 或 Run 時用)
 function stopAnimation() {
     if (window.mazeTimer) {
-        clearInterval(window.mazeTimer);
+        clearTimeout(window.mazeTimer);
         window.mazeTimer = null;
     }
-    // 清除搜尋過程中的顏色標記
+    window.currentStepFunc = null; // 清空暫存，代表動畫結束
+
+    // 清除畫面上的標記
     document.querySelectorAll('.cell.searching, .cell.current-head, .cell.path-node, .cell.backtracking').forEach(el => {
         el.classList.remove('searching', 'current-head', 'path-node', 'backtracking');
     });
 }
 
+// 【暫停】：只清除計時器，保留 currentStepFunc 與畫面狀態 (開啟選單時用)
+function pauseAnimation() {
+    if (window.mazeTimer) {
+        clearTimeout(window.mazeTimer);
+        window.mazeTimer = null;
+    }
+    // 注意：這裡不清除 window.currentStepFunc，這樣 resume 才知道要繼續跑什麼
+}
+
+// 【恢復】：如果還有未完成的步進函式，就繼續執行 (關閉選單時用)
+function resumeAnimation() {
+    // 只有在「有暫存函式」且「目前沒在跑」的時候才恢復
+    if (window.currentStepFunc && !window.mazeTimer) {
+        window.currentStepFunc(); // 立即執行下一步
+    }
+}
+
+// ===========================================
+// 2. 輔助函式
+// ===========================================
+
 function getDelay() {
     const slider = document.getElementById('speed-slider');
     if (!slider) return 30; 
-
-    // 取得數值 1 (慢) ~ 100 (快)
     let val = parseInt(slider.value);
+    if (val >= 98) return 0; // 極速模式
     
-    // 如果拉到最底，直接 0ms (極速)
-    if (val >= 98) return 0;
-
-    // 平滑公式：使用平方曲線讓速度感更自然
-    // 當 val = 1 時，(99/99)^2 * 500 = 500ms
-    // 當 val = 50 時，(50/99)^2 * 500 ≈ 127ms (原本的斷層消失了)
-    // 當 val = 90 時，(10/99)^2 * 500 ≈ 5ms
-    
-    const maxDelay = 500; // 最慢速度 (毫秒)
-    const factor = (100 - val) / 99; // 轉成 1.0 ~ 0.0 的比例
-    
+    // 非線性速度曲線，讓調整更有感
+    const maxDelay = 500; 
+    const factor = (100 - val) / 99; 
     return Math.floor(maxDelay * factor * factor);
 }
 
-// 統一入口：啟動動畫
-function startAnimation(type) {
-    stopAnimation();
-    
-    // ★ 新增：根據速度決定是否開啟平滑動畫
-    const delay = getDelay();
-    const gridEl = document.getElementById('grid-container'); // 假設你的迷宮容器 ID
-    if (gridEl) {
-        if (delay < 10) {
-            // 速度太快時，移除 CSS transition 以免畫面殘影
-            gridEl.style.setProperty('--cell-transition', 'none');
-        } else {
-            // 速度適中時，啟用平滑過渡
-            gridEl.style.setProperty('--cell-transition', 'background-color 0.15s ease-out');
-        }
-    }
-
-    mazeApp.solutionPath = [];
-    mazeApp.secondaryPath = [];
-    mazeApp.weightMap = new Array(mazeApp.width * mazeApp.height).fill(Infinity);
-    renderGrid(); 
-    
-    // ★ 修改：使用翻譯字串
-    statusText.innerText = (typeof t === 'function') ? t('status_simulating') : "Simulating...";
-
-    if (['left', 'right'].includes(type)) {
-        animateWallFollower(type);
-    } 
-    else if (['dfs', 'manhattan'].includes(type)) {
-        animateSingleAgent(type);
-    } 
-    else {
-        // ★ 修改：使用翻譯字串
-        const extraText = (typeof t === 'function') ? t('status_map_calc') : " (Map Calculation)";
-        statusText.innerText += extraText;
-        animateGraphSearch(type);
-    }
-}
-
-// ★★★ 新增：輔助函式 - 即時更新格子上的權重文字 ★★★
 function updateCellUI(x, y, textVal) {
-
     const cell = document.querySelector(`.cell[data-coord="(${x}, ${y})"]`);
     if (!cell) return;
-
     let span = cell.querySelector('.cell-weight');
     if (!span) {
         span = document.createElement('span');
@@ -87,11 +66,41 @@ function updateCellUI(x, y, textVal) {
     span.innerText = textVal;
 }
 
-// --------------------------------------------------------
-// 以下函式全部改為「遞迴 setTimeout」模式
-// --------------------------------------------------------
+// ===========================================
+// 3. 動畫入口
+// ===========================================
 
-// 1. 單一老鼠實體搜尋 (DFS/Manhattan)
+function startAnimation(type) {
+    stopAnimation(); // 先完全停止舊的
+    
+    const delay = getDelay();
+    const gridEl = document.getElementById('maze-grid'); // 修正 ID 為 maze-grid
+    if (gridEl) {
+        if (delay < 10) gridEl.style.setProperty('--cell-transition', 'none');
+        else gridEl.style.setProperty('--cell-transition', 'background-color 0.15s ease-out');
+    }
+
+    mazeApp.solutionPath = [];
+    mazeApp.secondaryPath = [];
+    mazeApp.weightMap = new Array(mazeApp.width * mazeApp.height).fill(Infinity);
+    renderGrid(); 
+    
+    statusText.innerText = (typeof t === 'function') ? t('status_simulating') : "Simulating...";
+
+    if (['left', 'right'].includes(type)) animateWallFollower(type);
+    else if (['dfs', 'manhattan'].includes(type)) animateSingleAgent(type);
+    else {
+        const extraText = (typeof t === 'function') ? t('status_map_calc') : " (Map Calculation)";
+        statusText.innerText += extraText;
+        animateGraphSearch(type);
+    }
+}
+
+// ===========================================
+// 4. 演算法動畫實作 (已支援 Resume)
+// ===========================================
+
+// --- 單一老鼠 (DFS/Manhattan) ---
 function animateSingleAgent(algoType) {
     if (mazeApp.goalPositions.size === 0) return alert("Please set a Goal first!");
 
@@ -101,7 +110,6 @@ function animateSingleAgent(algoType) {
     stack.push(startNode);
     visited.add(`${startNode.x},${startNode.y}`);
     updateCellUI(startNode.x, startNode.y, 0);
-
     let stepCount = 0;
 
     const getHeuristic = (x, y) => {
@@ -114,10 +122,11 @@ function animateSingleAgent(algoType) {
         return minH;
     };
 
-// ★ 定義單步執行的函式
     function step() {
+        // ★ 關鍵：將自己存起來，以便 Resume 時呼叫
+        window.currentStepFunc = step;
+
         if (stack.length === 0) {
-            // ★ 修改：翻譯
             const msg = (typeof t === 'function') ? t('msg_no_path') : "No Path Found.";
             finishAnimation([], msg, null);
             return;
@@ -126,6 +135,7 @@ function animateSingleAgent(algoType) {
         const current = stack[stack.length - 1]; 
         const { x, y } = current;
 
+        // 更新 Current Head 樣式
         document.querySelectorAll('.current-head').forEach(el => el.classList.remove('current-head'));
         const cell = document.querySelector(`.cell[data-coord="(${x}, ${y})"]`);
         if (cell) {
@@ -135,7 +145,6 @@ function animateSingleAgent(algoType) {
 
         if (mazeApp.goalPositions.has(`${x},${y}`)) {
             const path = stack.map(node => ({x: node.x, y: node.y}));
-            // ★ 修改：翻譯
             const msg = (typeof t === 'function') ? t('msg_goal_reached') : "Goal Reached!";
             finishAnimation(path, msg, null);
             return;
@@ -148,15 +157,12 @@ function animateSingleAgent(algoType) {
             const ny = y + DIRS[i].dy;
             const key = `${nx},${ny}`;
             if (!visited.has(key)) {
-                const h = getHeuristic(nx, ny);
-                neighbors.push({ x: nx, y: ny, h: h, dirIdx: i });
+                neighbors.push({ x: nx, y: ny, h: getHeuristic(nx, ny), dirIdx: i });
             }
         }
 
         if (neighbors.length > 0) {
-            if (algoType === 'manhattan') {
-                neighbors.sort((a, b) => a.h - b.h);
-            }
+            if (algoType === 'manhattan') neighbors.sort((a, b) => a.h - b.h);
             const next = neighbors[0];
             visited.add(`${next.x},${next.y}`);
             stack.push(next);
@@ -170,42 +176,37 @@ function animateSingleAgent(algoType) {
             stack.pop();
         }
 
-        // ★★★ 關鍵：遞迴呼叫 setTimeout ★★★
         window.mazeTimer = setTimeout(step, getDelay());
     }
-
-    // 啟動第一步
     step();
 }
 
-// 2. 左/右手法則
+// --- 牆壁跟隨 (Wall Follower) ---
 function animateWallFollower(algoType) {
     if (mazeApp.goalPositions.size === 0) return alert("Please set a Goal first!");
     
     let x = mazeApp.startPos.x;
     let y = mazeApp.startPos.y;
     let dir = 0; 
-    
+    // 簡單初始化方向
     if (mazeApp.isWall(x, y, dir)) {
         if (!mazeApp.isWall(x, y, 1)) dir = 1;
         else if (!mazeApp.isWall(x, y, 2)) dir = 2;
         else dir = 3;
     }
-
     let path = [{x, y}];
     let steps = 0;
     const maxSteps = mazeApp.width * mazeApp.height * 4;
 
     function step() {
+        window.currentStepFunc = step; // ★ 儲存狀態
+
         if (mazeApp.goalPositions.has(`${x},${y}`)) {
-            // ★ 修改：翻譯
             const msg = (typeof t === 'function') ? t('msg_goal_reached') : "Goal Reached!";
             finishAnimation(path, msg, null); 
             return;
         }
-        
         if (steps++ > maxSteps) {
-            // ★ 修改：翻譯
             const msg = (typeof t === 'function') ? t('msg_stuck') : "Stuck in loop";
             finishAnimation(path, msg, null);
             return;
@@ -232,20 +233,16 @@ function animateWallFollower(algoType) {
             }
         }
         if (!moved) {
-            // ★ 修改：翻譯
             const msg = (typeof t === 'function') ? t('msg_trapped') : "Trapped!";
             finishAnimation(path, msg, null);
             return;
         }
-
-        // ★★★ 遞迴呼叫 ★★★
         window.mazeTimer = setTimeout(step, getDelay());
     }
-
     step();
 }
 
-// 3. 通用圖搜尋 (擴散式)
+// --- 圖搜尋 (Graph Search) ---
 function animateGraphSearch(algoType) {
     if (mazeApp.goalPositions.size === 0) return alert("Please set a Goal first!");
 
@@ -256,7 +253,6 @@ function animateGraphSearch(algoType) {
 
     const startIdx = mazeApp.getIndex(mazeApp.startPos.x, mazeApp.startPos.y);
     const startNode = { x: mazeApp.startPos.x, y: mazeApp.startPos.y, g: 0, f: 0 };
-    
     gScore[startIdx] = 0;
     openSet.push(startNode);
     updateCellUI(startNode.x, startNode.y, 0);
@@ -272,8 +268,9 @@ function animateGraphSearch(algoType) {
     };
 
     function step() {
+        window.currentStepFunc = step; // ★ 儲存狀態
+
         if (openSet.length === 0) {
-            // ★ 修改：翻譯
             const msg = (typeof t === 'function') ? t('msg_no_path') : "No Path Found.";
             finishAnimation([], msg, gScore);
             return;
@@ -281,10 +278,7 @@ function animateGraphSearch(algoType) {
 
         let current;
         if (['astar', 'dijkstra'].includes(algoType)) {
-            openSet.sort((a, b) => {
-                if (algoType === 'astar') return a.f - b.f;
-                return a.g - b.g;
-            });
+            openSet.sort((a, b) => (algoType === 'astar') ? a.f - b.f : a.g - b.g);
         }
         current = openSet.shift(); 
 
@@ -296,17 +290,14 @@ function animateGraphSearch(algoType) {
             reconstructPathAnim(cameFrom, current, gScore);
             return;
         }
-
         visited.add(currentKey);
 
         for (let i = 0; i < 4; i++) {
             if (mazeApp.isWall(current.x, current.y, i)) continue;
-
             const nx = current.x + DIRS[i].dx;
             const ny = current.y + DIRS[i].dy;
             const nKey = `${nx},${ny}`;
             const nIdx = mazeApp.getIndex(nx, ny);
-
             if (visited.has(nKey)) continue;
             
             const isQueued = openSet.some(n => n.x === nx && n.y === ny);
@@ -315,18 +306,13 @@ function animateGraphSearch(algoType) {
             if (!isQueued || newG < gScore[nIdx]) {
                 gScore[nIdx] = newG;
                 const h = getHeuristic(nx, ny);
-                const newNode = { x: nx, y: ny, g: newG, f: newG + h };
-                
-                openSet.push(newNode);
+                openSet.push({ x: nx, y: ny, g: newG, f: newG + h });
                 cameFrom[nKey] = current;
                 updateCellUI(nx, ny, newG);
             }
         }
-
-        // ★★★ 遞迴呼叫 ★★★
         window.mazeTimer = setTimeout(step, getDelay());
     }
-
     step();
 }
 
@@ -340,27 +326,24 @@ function reconstructPathAnim(cameFrom, current, finalWeightMap) {
         currKey = parent ? `${parent.x},${parent.y}` : null;
     }
     path.reverse();
-
     const msg = (typeof t === 'function') ? t('msg_goal_reached') : "Goal Reached!";
     finishAnimation(path, msg, finalWeightMap);
 }
 
 function finishAnimation(path, msg, finalWeightMap) {
-    clearTimeout(window.mazeTimer); // ★ 改用 clearTimeout
+    clearTimeout(window.mazeTimer);
     window.mazeTimer = null;
+    window.currentStepFunc = null; // ★ 清除步進函式，代表已結束
     
     mazeApp.solutionPath = path;
     if (finalWeightMap) mazeApp.weightMap = finalWeightMap;
 
     renderGrid(); 
-
     setTimeout(() => {
         document.querySelectorAll('.cell.searching, .cell.backtracking').forEach(el => {
             el.classList.remove('searching', 'current-head', 'backtracking');
         });
     }, 1500);
-
     const stats = analyzePath(path);
     statusText.innerHTML = `${msg} | Steps: <b>${stats.steps}</b>`;
 }
-

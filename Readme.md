@@ -21,6 +21,7 @@ A lightweight, high-performance web-based simulator for **Micromouse** maze desi
 * **🌗 Smart Theme Toggle:** Animated Sun/Moon switch for Dark/Light mode.
 * **✨ Adaptive Overlay:** Status info box automatically fades to transparent when overlapping with the maze grid.
 * **🎞️ Enhanced Visualization:** New backtracking animation (shrinking nodes) for clearer DFS execution.
+* **📸 Image Import:** Includes a **Python Companion Tool** to convert real-world maze photos into compatible `.json` maps with an interactive GUI editor.
 
 ### ⚡ High Performance & Architecture
 
@@ -44,7 +45,20 @@ Includes standard algorithms with **Visual Animations**:
 * **🌀 DFS:** Depth-First Search with backtracking visualization.
 * **⬅️ / ➡️ Wall Follower:** Left/Right-Hand rules simulation.
 
+---
 
+## 📸 Maze Image Converter (Python Tool)
+
+This project includes a powerful offline Python tool located in the `tools/` directory. It allows you to convert photos of physical mazes (Classic 16x16 or Half-size 32x32) into JSON format for the simulator.
+
+**Features:**
+* **🖼️ Auto-Detection:** Automatically detects maze size from filenames.
+* **✨ Interactive GUI:** Verify walls and set start/goal positions visually.
+* **📐 Auto-Correction:** Aligns grids and fixes perspective issues.
+
+👉 **[Check out the Tool Documentation here](tools/README.md)** *(For Traditional Chinese instructions, see [中文說明](tools/Readme_zh.md))*
+
+---
 
 ### 🎨 UI/UX
 
@@ -63,7 +77,13 @@ The project follows a modular architecture:
 micromouse-sim/
 ├── index.html           # Main entry point
 ├── style.css            # Styling and CSS variables
-├── maps/                # Pre-loaded map files
+├── maps/                # Pre-loaded map files (.json)
+├── tools/               # 🐍 Python Utility Tools
+│   ├── maze_converter.py    # Image to JSON converter & editor
+│   ├── requirements.txt     # Python dependencies
+│   ├── README.md            # Tool documentation (English)
+│   └── Readme_zh.md         # Tool documentation (Chinese)
+│
 ├── js/
 │   ├── setup.js         # Global variables & DOM initialization
 │   ├── ui_control.js    # Main controller & Worker communication
@@ -90,6 +110,15 @@ micromouse-sim/
 │       └── wall_follower.js
 
 ```
+
+---
+
+## 📚 Micromouse Resources
+
+Want to learn more about real-world Micromouse competitions? Check out our curated list of events and resources:
+
+* 📄 **[Introduction & Competition Links (English)](docs/micromouse_intro.md)**
+* 📄 **[電腦鼠介紹與賽事連結 (中文)](docs/micromouse_intro_zh.md)**
 
 ---
 

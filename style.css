@@ -25,6 +25,7 @@
     --start-bg: #4ade80;
     --goal-bg: #f87171;
     --path-bg: rgba(255, 235, 59, 0.7);
+    --sidebar-width: 340px;
     --cell-size: 30px;
     --cols: 16;
     --rows: 16;
@@ -111,7 +112,7 @@ body {
     /* Header 50px, Content 剩餘 */
     grid-template-rows: 50px 1fr;
     /* Sidebar 280px, Main 剩餘 */
-    grid-template-columns: 280px 1fr;
+    grid-template-columns: var(--sidebar-width) 1fr;
     grid-template-areas: 
         "header header"
         "sidebar main";
@@ -262,6 +263,73 @@ input:checked + .slider:before {
 
 .icon-moon {
     right: 7px; /* 同上，確保居中 */
+}
+
+/* =========================================
+   Toggle Switch UI (通用開關樣式)
+   ========================================= */
+.toggle-control {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    margin-bottom: 8px; /* 選項之間的間距 */
+    user-select: none;
+    position: relative;
+}
+
+/* 隱藏原始的 checkbox */
+.toggle-control input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+
+/* 滑軌背景 */
+.toggle-slider {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    background-color: #ccc; /* 未選取時的灰色 */
+    border-radius: 24px;
+    transition: 0.3s;
+    margin-right: 12px; /* 開關與文字的距離 */
+    flex-shrink: 0;
+}
+
+/* 深色模式下的未選取背景 */
+[data-theme="dark"] .toggle-slider {
+    background-color: #555;
+}
+
+/* 圓形按鈕 (Knob) */
+.toggle-slider::before {
+    content: "";
+    position: absolute;
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    border-radius: 50%;
+    transition: 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* 選取狀態 (Checked) - 背景變色 */
+.toggle-control input:checked + .toggle-slider {
+    background-color: var(--primary); /* 使用你的主題綠色 */
+}
+
+/* 選取狀態 (Checked) - 按鈕移動 */
+.toggle-control input:checked + .toggle-slider::before {
+    transform: translateX(20px);
+}
+
+/* 文字標籤樣式 */
+.toggle-text {
+    font-size: 14px;
+    color: var(--text-main);
 }
 
 /* --- Global Toggle Button --- */
@@ -519,6 +587,97 @@ button.danger:hover { background-color: var(--danger); color: white; }
 .file-btn { width: 100% !important; text-align: center; margin-bottom: 8px; padding: 10px 15px; display: flex; justify-content: center; align-items: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 
+
+/* =========================================
+   Language Selector (加大美化版)
+   ========================================= */
+.lang-select {
+    /* 1. 尺寸放大 */
+    height: 40px;           /* 增加高度 (原本約 20-30px) */
+    font-size: 16px;        /* 字體變大 (原本預設通常是 13px) */
+    font-weight: 500;       /* 字體稍微加粗 */
+    padding: 0 12px;        /* 增加左右留白 */
+    
+    /* 2. 寬度調整 */
+    min-width: 140px;       /* 設定最小寬度，確保文字不折行 */
+    max-width: none;        /* ★ 重要：移除原本 120px 的限制 */
+    flex-shrink: 0;         /* 防止被擠壓 */
+    
+    /* 3. 外觀美化 */
+    border: 1px solid var(--border-color);
+    border-radius: 8px;     /* 圓角更圓潤 */
+    background-color: var(--bg-panel);
+    color: var(--text-main);
+    cursor: pointer;
+    outline: none;          /* 移除點擊時的藍框 */
+    
+    /* 4. 添加陰影與轉場效果 */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+    
+    /* 讓文字垂直置中 */
+    display: flex;
+    align-items: center;
+}
+
+/* 滑鼠懸停效果 */
+.lang-select:hover {
+    border-color: var(--primary);       /* 邊框變綠色 */
+    background-color: var(--bg-body);   /* 背景稍微變深 */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 點擊/聚焦效果 */
+.lang-select:focus {
+    border-color: var(--primary);
+    /* 加一圈淡綠色的光暈，提升操作感 */
+    box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.2); 
+}
+
+/* =========================================
+   Sidebar Selects (側邊欄下拉選單美化)
+   ========================================= */
+#algo-select, 
+#map-select, 
+#size-preset {
+    /* 1. 尺寸放大 */
+    height: 38px;           /* 高度增加，好點擊 */
+    font-size: 14px;        /* 字體適中 */
+    padding: 0 10px;        /* 內距 */
+    
+    /* 2. 外觀美化 */
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background-color: var(--bg-panel);
+    color: var(--text-main);
+    cursor: pointer;
+    outline: none;
+    
+    /* 3. 排版 */
+    flex: 1;                /* 自動填滿剩餘空間 */
+    min-width: 0;           /* 防止被撐開 */
+    
+    /* 4. 陰影與轉場 */
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    transition: all 0.2s ease;
+}
+
+/* 滑鼠懸停 */
+#algo-select:hover, 
+#map-select:hover, 
+#size-preset:hover {
+    border-color: var(--primary);
+    background-color: var(--bg-body);
+}
+
+/* 點擊聚焦 */
+#algo-select:focus, 
+#map-select:focus, 
+#size-preset:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.15); /* 淡綠色光暈 */
+}
+
 /* =========================================
    6. Responsive Design (Mobile) - REFACTORED
    ========================================= */
@@ -549,7 +708,7 @@ button.danger:hover { background-color: var(--danger); color: white; }
         top: 50px;
         bottom: 0;
         left: 0;
-        width: 280px;
+        width: var(--sidebar-width);
         
         /* 3. ★ 確保容器本身不捲動，只讓內部的 scroll-area 捲動 */
         display: flex;
@@ -568,7 +727,7 @@ button.danger:hover { background-color: var(--danger); color: white; }
     /* Mobile: 當 Sidebar 關閉時，移出畫面 */
     body.sidebar-closed #sidebar {
         transform: translateX(-100%);
-        width: 280px; /* 保持寬度，只是移出去了 */
+        width: var(--sidebar-width); /* 保持寬度，只是移出去了 */
     }
 
     .sidebar-scroll-area {
@@ -622,4 +781,49 @@ button.danger:hover { background-color: var(--danger); color: white; }
 @keyframes fadeInMask {
     from { opacity: 0; }
     to { opacity: 1; }
+}
+
+/* =========================================
+   GitHub Button (Desktop Only)
+   ========================================= */
+
+/* 1. 預設狀態 (手機)：隱藏 */
+.desktop-only {
+    display: none;
+}
+
+/* 2. 電腦版樣式 (螢幕寬度大於 768px 時顯示) */
+@media (min-width: 768px) {
+    .desktop-only {
+        display: flex; /* 改為顯示 */
+        align-items: center;
+        text-decoration: none; /* 去掉底線 */
+        color: var(--text-color, #333); /* 跟隨主題文字顏色 */
+        margin-left: 10px;
+        padding: 5px 10px;
+        border: 1px solid var(--border-color, #ccc);
+        border-radius: 5px;
+        transition: background-color 0.2s, color 0.2s;
+        font-size: 0.9rem;
+        background-color: var(--bg-card, #fff);
+    }
+
+    /* 滑鼠懸停效果 */
+    .desktop-only:hover {
+        background-color: var(--primary, #007bff);
+        color: white;
+        border-color: var(--primary, #007bff);
+    }
+    
+    /* 深色模式適配 (如果你有定義 .dark-theme) */
+    body.dark-theme .desktop-only {
+        color: #ddd;
+        border-color: #555;
+        background-color: #333;
+    }
+    
+    body.dark-theme .desktop-only:hover {
+        background-color: var(--primary, #007bff);
+        color: white;
+    }
 }
