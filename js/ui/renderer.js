@@ -2,7 +2,21 @@
 
 // 畫面縮放
 function updateZoom(val) {
+    // 1. 原本設定 CSS 變數的程式碼
     document.documentElement.style.setProperty('--cell-size', val + 'px');
+    
+    // (如果原本有更新 Slider 文字的程式碼保留不動)
+    // document.getElementById('zoom-val').innerText = val; 
+
+    // ★ 2. 新增這段：自動判斷是否旋轉座標
+    const xAxis = document.getElementById('x-axis');
+    
+    // 設定閾值：例如小於 24px 時就覺得太擠了，開始旋轉
+    if (val < 24) {
+        xAxis.classList.add('rotate-mode');
+    } else {
+        xAxis.classList.remove('rotate-mode');
+    }
 }
 
 function resetView() {

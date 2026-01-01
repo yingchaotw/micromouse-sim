@@ -79,7 +79,8 @@ function init() {
 
     if (typeof initPanHandler === 'function') initPanHandler();
     if (typeof initSpeedSlider === 'function') initSpeedSlider();
-    
+    if (typeof initSwipeSidebar === 'function') initSwipeSidebar();
+
     updateAlgoUI();
     // 初始化事件監聽
     initWheelZoom();      
@@ -291,43 +292,34 @@ function downloadMap() {
 
 function runSelectedAlgo() {
     const chkAnimate = document.getElementById('chk-animate');
-    const useAnim = chkAnimate && chkAnimate.checked;
-    
+    // const useAnim = chkAnimate && chkAnimate.checked; // 這行可以註解掉或刪除
+
     const select = document.getElementById('algo-select');
     const type = select.value;
 
-    // 定義核心執行邏輯 (包成一個函式)
+    // 定義核心執行邏輯
     const execute = () => {
-        if (useAnim) {
-            // 呼叫動畫模組 (animator.js)
-            if (typeof startAnimation === 'function') startAnimation(type);
+        // ★★★ 關鍵修正：統一由 startAnimation 接管 ★★★
+        // 不管有沒有勾選動畫，都交給 animator.js 處理
+        // animator.js 內部會自己判斷要 runGeneratorSync (瞬間) 還是 animateGenerator (動畫)
+        if (typeof startAnimation === 'function') {
+            startAnimation(type);
         } else {
-            // 呼叫 Worker (原本的邏輯)
-            runAlgo(type); 
+            console.error("startAnimation function missing!");
+            runAlgo(type); // 只有在找不到函式時才降級使用 Worker
         }
     };
 
-    // --- 手機版優化邏輯 ---
-    
-    // 1. 判斷是否為手機版 (寬度 <= 768px)
+    // --- 手機版優化邏輯 (保持不變) ---
     const isMobile = window.innerWidth <= 768;
-    
-    // 2. 判斷側邊欄是否開啟 (body 沒有 sidebar-closed 代表開啟)
     const isSidebarOpen = !document.body.classList.contains('sidebar-closed');
 
     if (isMobile && isSidebarOpen) {
-        // 如果是手機且選單開著：
-        
-        // A. 先關閉選單
         toggleSidebar();
-
-        // B. 等待 CSS 動畫結束 (約 350ms) 後再執行演算法
-        // 這樣使用者才看得到開頭
         setTimeout(() => {
             execute();
         }, 360); 
     } else {
-        // 電腦版或選單已關閉：直接執行
         execute();
     }
 }
@@ -435,6 +427,88 @@ function toggleSettingPanel() {
     const filePanel = document.getElementById('file-panel');
     if (filePanel) filePanel.style.display = 'none';
     panel.style.display = (panel.style.display === 'none') ? 'flex' : 'none';
+}
+
+
+// === 地圖清單與讀取功能 ===
+
+function initMapList() {
+    const select = document.getElementById('map-select');
+    // 檢查 MAP_LIST 是否存在 (由 maps_index.js 提供)
+    if (!select || typeof MAP_LIST === 'undefined') return;
+
+    const currentVal = select.value;
+    select.innerHTML = ''; // 清空現有選項
+
+    // 1. 準備容器：用來分類年份
+    const groups = {}; 
+    const others = [];
+
+    // 2. 遍歷 MAP_LIST 進行分類
+    MAP_LIST.forEach(map => {
+        // 跳過空檔名 (如果有定義分隔線的話)
+        if (!map.file) return;
+
+        // ★ Regex: 抓取名稱中的 4 位數年份 (例如 2024, 2023)
+        // map.name 可能是 "2024第45回..." 或 "Demo Map"
+        const match = map.name.match(/(20\d{2})/);
+
+        if (match) {
+            const year = match[1];
+            if (!groups[year]) groups[year] = [];
+            groups[year].push(map);
+        } else {
+            // 沒抓到年份的，放進「其他」
+            others.push(map);
+        }
+    });
+
+    // 3. 加入一個預設提示選項 (可選)
+    const defaultOpt = document.createElement('option');
+    defaultOpt.value = "";
+    defaultOpt.textContent = typeof t === 'function' ? t('lbl_select_map') : "-- Select Map --";
+    // 如果想要預設選中這個，可以 uncomment 下面這行，但在 changeLanguage 時會重置
+    // if (!currentVal) defaultOpt.selected = true; 
+    select.appendChild(defaultOpt);
+
+    // 4. 依照年份「由大到小」排序 (最新的在最上面)
+    const sortedYears = Object.keys(groups).sort((a, b) => b - a);
+
+    sortedYears.forEach(year => {
+        // 建立分組標籤
+        const groupEl = document.createElement('optgroup');
+        groupEl.label = `${year}`; // 標題顯示年份
+
+        groups[year].forEach(map => {
+            const option = document.createElement('option');
+            option.value = map.file;
+            // 支援多語系名稱
+            option.textContent = typeof t === 'function' ? t(map.name) : map.name;
+            groupEl.appendChild(option);
+        });
+
+        select.appendChild(groupEl);
+    });
+
+    // 5. 最後加入「其他」類別 (如果有)
+    if (others.length > 0) {
+        const otherGroup = document.createElement('optgroup');
+        otherGroup.label = typeof t === 'function' ? t('lbl_others') : "Others"; // 你可以在 i18n 裡加個 lbl_others
+
+        others.forEach(map => {
+            const option = document.createElement('option');
+            option.value = map.file;
+            option.textContent = typeof t === 'function' ? t(map.name) : map.name;
+            otherGroup.appendChild(option);
+        });
+
+        select.appendChild(otherGroup);
+    }
+
+    // 6. 嘗試恢復原本選中的值 (避免切換語言時跳掉)
+    if (currentVal) {
+        select.value = currentVal;
+    }
 }
 
 // 啟動程式

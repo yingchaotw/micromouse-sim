@@ -337,35 +337,27 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* =========================================
-   Mobile Pinch-to-Zoom (手機雙指縮放)
+   Mobile Pinch-to-Zoom (手機雙指縮放 & 單指平移)
    ========================================= */
 document.addEventListener('DOMContentLoaded', () => {
     const layoutWrapper = document.querySelector('.layout-wrapper');
-    const mazeContainer = document.getElementById('maze-container'); // 剛剛新增的容器
+    const mazeContainer = document.getElementById('maze-container');
     const zoomSlider = document.getElementById('zoom-slider');
 
     if (!layoutWrapper || !mazeContainer || !zoomSlider) return;
 
-    // --- 狀態變數 ---
     let state = {
         isDragging: false,
         startX: 0,
         startY: 0,
-        currentX: 0,  // 目前的平移 X
-        currentY: 0,  // 目前的平移 Y
-        
-        // 縮放相關
+        currentX: 0,
+        currentY: 0,
         initialDist: 0,
         initialZoom: 30
     };
 
-    // --- 輔助函式：更新 CSS Transform ---
     const updateTransform = () => {
-        // 我們只移動容器，不縮放容器 (因為縮放是改變 Cell Size)
-        // 使用 translate3d 開啟硬體加速
         mazeContainer.style.transform = `translate3d(${state.currentX}px, ${state.currentY}px, 0)`;
-
-        // ★★★ 新增這行：Transform 改變位置時檢查是否重疊 ★★★
         if (typeof checkInfoOverlap === 'function') checkInfoOverlap();
     };
 
@@ -374,53 +366,50 @@ document.addEventListener('DOMContentLoaded', () => {
     // ============================
 
     layoutWrapper.addEventListener('touchstart', (e) => {
+        // ★★★ 關鍵修正：邊緣防誤觸 (Edge Guard) ★★★
+        // 如果觸控點在螢幕左側 40px 內，視為「要拉選單」，不觸發迷宮拖曳
+        if (e.touches.length > 0 && e.touches[0].clientX < 40) {
+            return; 
+        }
+
         if (e.touches.length === 1) {
             // [單指] 開始平移
             state.isDragging = true;
-            // 記錄點擊位置與當前偏移量的差值
             state.startX = e.touches[0].clientX - state.currentX;
             state.startY = e.touches[0].clientY - state.currentY;
             layoutWrapper.classList.add('grabbing');
         } 
         else if (e.touches.length === 2) {
             // [雙指] 開始縮放
-            state.isDragging = false; // 雙指時停止平移
+            state.isDragging = false;
             state.initialDist = getDistance(e.touches[0], e.touches[1]);
             state.initialZoom = parseFloat(zoomSlider.value);
         }
     }, { passive: false });
 
+    // ... (後面的 touchmove, touchend 保持不變) ...
+    
     layoutWrapper.addEventListener('touchmove', (e) => {
-        e.preventDefault(); // 防止畫面捲動
+        e.preventDefault(); 
 
         if (e.touches.length === 1 && state.isDragging) {
-            // [單指] 執行平移
             const x = e.touches[0].clientX;
             const y = e.touches[0].clientY;
-
             state.currentX = x - state.startX;
             state.currentY = y - state.startY;
-
             requestAnimationFrame(updateTransform);
         } 
         else if (e.touches.length === 2) {
-            // [雙指] 執行縮放
             const currentDist = getDistance(e.touches[0], e.touches[1]);
             if (state.initialDist > 0) {
                 const scale = currentDist / state.initialDist;
                 let newZoom = state.initialZoom * scale;
-
-                // 限制範圍
                 const min = parseFloat(zoomSlider.min);
                 const max = parseFloat(zoomSlider.max);
                 if (newZoom < min) newZoom = min;
                 if (newZoom > max) newZoom = max;
-
-                // 更新 Slider 與迷宮大小
                 zoomSlider.value = newZoom;
-                if (typeof updateZoom === 'function') {
-                    updateZoom(newZoom);
-                }
+                if (typeof updateZoom === 'function') updateZoom(newZoom);
             }
         }
     }, { passive: false });
@@ -428,13 +417,14 @@ document.addEventListener('DOMContentLoaded', () => {
     layoutWrapper.addEventListener('touchend', () => {
         state.isDragging = false;
         layoutWrapper.classList.remove('grabbing');
-        state.initialDist = 0; // 重置縮放距離
+        state.initialDist = 0;
     });
 
-    // ============================
-    // 2. 滑鼠事件 (Desktop Mouse) - 讓電腦版也能拖曳
-    // ============================
+    // ... (滑鼠事件與 helper 保持不變) ...
     
+    // ============================
+    // 2. 滑鼠事件 (Desktop Mouse)
+    // ============================
     layoutWrapper.addEventListener('mousedown', (e) => {
         state.isDragging = true;
         state.startX = e.clientX - state.currentX;
@@ -445,10 +435,8 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('mousemove', (e) => {
         if (!state.isDragging) return;
         e.preventDefault();
-        
         state.currentX = e.clientX - state.startX;
         state.currentY = e.clientY - state.startY;
-        
         requestAnimationFrame(updateTransform);
     });
 
@@ -457,7 +445,6 @@ document.addEventListener('DOMContentLoaded', () => {
         layoutWrapper.classList.remove('grabbing');
     });
 
-    // --- 工具函式 ---
     function getDistance(touch1, touch2) {
         return Math.hypot(
             touch1.clientX - touch2.clientX,
@@ -494,3 +481,38 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+// =========================================
+// Mobile Edge Swipe (手機邊緣滑動選單)
+// =========================================
+function initSwipeSidebar() {
+    let touchStartX = 0;
+    let touchStartY = 0;
+    const EDGE_THRESHOLD = 40; 
+    const SWIPE_DISTANCE = 50;
+
+    document.addEventListener('touchstart', (e) => {
+        if (e.touches.length !== 1) return;
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+        if (e.changedTouches.length !== 1) return;
+        const touchEndX = e.changedTouches[0].clientX;
+        const diffX = touchEndX - touchStartX;
+        
+        // 簡單判斷：如果是從邊緣向右滑，且距離夠長
+        if (touchStartX < EDGE_THRESHOLD && diffX > SWIPE_DISTANCE) {
+            // 如果選單是關著的，就打開
+            if (document.body.classList.contains('sidebar-closed')) {
+                toggleSidebar();
+            }
+        }
+        
+        // 如果是向左滑 (關閉選單)
+        if (diffX < -SWIPE_DISTANCE && !document.body.classList.contains('sidebar-closed')) {
+            toggleSidebar();
+        }
+    });
+}

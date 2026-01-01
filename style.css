@@ -105,13 +105,14 @@ body {
     background-color: var(--bg-body);
     color: var(--text-main);
     margin: 0;
-    height: 100vh;
-    overflow: hidden;
+    width: 100%;
+    height: 100dvh;   /* 使用 dvh 動態高度，適配 iOS 工具列伸縮 */
+    position: fixed;  /* ★ 關鍵：強制固定位置，防止切換 App 時版面跑掉 */
+    inset: 0;         /* 上下左右貼齊 */
+    overflow: hidden; /* 禁止 body 捲動 */
     
     display: grid;
-    /* Header 50px, Content 剩餘 */
-    grid-template-rows: 50px 1fr;
-    /* Sidebar 280px, Main 剩餘 */
+    grid-template-rows: max-content 1fr; /* 配合上一題改的設定 */
     grid-template-columns: var(--sidebar-width) 1fr;
     grid-template-areas: 
         "header header"
@@ -133,15 +134,25 @@ body.sidebar-closed {
     display: flex;
     align-items: center;
     
-    /* ★ 修改重點 1: 使用 relative 讓內部的絕對定位元素參考這裡 */
+    /* ★ 使用 relative 讓內部的絕對定位元素參考這裡 */
     position: relative; 
     
-    /* ★ 修改重點 2: 左邊強制留出 60px 給漢堡按鈕，右邊留 15px */
-    padding: 0 15px 0 60px; 
+    /* 🟢 修改 padding-top，加個保險 */
+    /* 意思是：取「安全區域」跟「10px」之中比較大的那個 */
+    /* 這樣就算 Safari 誤判安全區域為 0，至少還有 10px 的縫隙，不會完全黏在動態島上 */
+    padding-top: max(10px, env(safe-area-inset-top)); 
+    
+    /* 其他 padding 保持不變 */
+    padding-right: max(15px, env(safe-area-inset-right));
+    padding-left: max(60px, env(safe-area-inset-left));
+    padding-bottom: 0;
+
+    height: auto;
+    min-height: 50px; 
     
     gap: 10px;
     z-index: 50;
-    overflow: hidden; /* 防止內容爆出去 */
+    overflow: hidden;
 }
 
 /* 設定標題文字 */
@@ -463,6 +474,32 @@ body.sidebar-closed #sidebar .sidebar-scroll-area {
 .y-axis { grid-row: 1; grid-column: 1; display: grid; grid-template-rows: repeat(var(--rows), var(--cell-size)); align-items: center; justify-items: end; padding-right: 8px; font-size: 12px; }
 .x-axis-wrapper { grid-row: 2; grid-column: 2; display: grid; grid-template-columns: repeat(var(--cols), var(--cell-size)); justify-items: center; font-size: 12px; margin-top: 5px; }
 .y-axis div, .x-axis-wrapper div { color: var(--text-sub); font-weight: bold; white-space: nowrap; }
+/* 1. 容器設定：調整高度與外距 */
+.x-axis-wrapper.rotate-mode {
+    /* ★ 關鍵 1：用負的 margin 把整排數字往上拉，靠近迷宮 */
+    margin-top: -7px; 
+    
+    /* 給予足夠高度，確保突出的長數字不會被切掉 */
+    height: 40px; 
+    
+    /* 確保垂直對齊 */
+    align-items: start; 
+}
+
+/* 2. 數字設定：旋轉並微調位置 */
+.x-axis-wrapper.rotate-mode div {
+    transform-origin: center center;
+    
+    /* ★ 關鍵修正：改成負數，或者直接歸零 */
+    /* translateX(-15px) 代表「往下」移動 (因為旋轉後 X 軸朝上) */
+    transform: rotate(-90deg) translateX(-15px);
+
+    width: var(--cell-size);
+    text-align: center;
+    font-size: 10px;
+    line-height: var(--cell-size);
+    position: relative;
+}
 #maze-grid { grid-row: 1; grid-column: 2; display: grid; grid-template-columns: repeat(var(--cols), var(--cell-size)); grid-template-rows: repeat(var(--rows), var(--cell-size)); background-color: var(--bg-panel); user-select: none; -webkit-user-select: none; position: relative; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
 #maze-grid.editing-wall .cell { cursor: crosshair; }
 .cell { width: var(--cell-size); height: var(--cell-size); border: 1px solid var(--grid-line); position: relative; cursor: pointer; transition: var(--cell-transition, background-color 0.15s ease-out); }
@@ -476,11 +513,23 @@ body.sidebar-closed #sidebar .sidebar-scroll-area {
 .is-goal { background-color: var(--goal-bg) !important; }
 .is-start::after { content: 'S'; color: white; font-weight: bold; font-size: 12px; position:absolute; inset:0; display:flex; justify-content:center; align-items:center;}
 .is-goal::after { content: 'G'; color: white; font-weight: bold; font-size: 12px; position:absolute; inset:0; display:flex; justify-content:center; align-items:center;}
+/* ★★★ 修改如下：增加平滑轉場 ★★★ */
 .cell.searching { 
     background-color: rgba(33, 150, 243, 0.5) !important; /* 淺藍色 */
-    transition: background-color 0.1s; 
+    
+    /* 增加 transform 讓格子有微微彈出的感覺，看起來更活潑 */
+    transform: scale(0.95); 
+    border-radius: 4px;
+    
+    /* 讓顏色變化有 0.3秒 的漸變，消除閃爍感 */
+    transition: background-color 0.3s ease-out, transform 0.2s ease-out; 
 }
-[data-theme="dark"] .cell.searching { background-color: #01579b !important; }
+
+/* 深色模式也要改 */
+[data-theme="dark"] .cell.searching { 
+    background-color: #01579b !important; 
+    transition: background-color 0.3s ease-out, transform 0.2s ease-out; 
+}
 .cell.current-head { background-color: #ff9800 !important; border: 2px solid #fff; z-index: 30; }
 /* 修改這一段 */
 .cell.backtracking { 
@@ -685,7 +734,7 @@ button.danger:hover { background-color: var(--danger); color: white; }
     body {
         /* 手機版：永遠保持單欄，不管選單有沒有開 */
         grid-template-columns: 1fr;
-        grid-template-rows: 50px 1fr;
+        grid-template-rows: max-content 1fr;
         grid-template-areas: 
             "header"
             "main";

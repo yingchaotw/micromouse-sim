@@ -2,8 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title data-i18n="title">電腦鼠迷宮設定器</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">    <title data-i18n="title">電腦鼠迷宮設定器</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxNiAxNic+PHBhdGggZmlsbD0nIzI4YTc0NScgZD0nTTIgMmgxMnYxMkgyVjJ6bTIgMnY4aDhWNEg0em0yIDJoNHY0SDZWNnonLz48L3N2Zz4=">
     <link rel="stylesheet" href="style.css">
 </head>
@@ -127,13 +126,20 @@
                 <div class="input-group">
                     <label data-i18n="lbl_algo">演算法:</label> 
                     <select id="algo-select" onchange="updateAlgoUI()">
-                        <option value="flood" data-i18n="algo_flood">🌊 洪水</option>
-                        <option value="bfs" data-i18n="algo_bfs">📡 BFS (廣度)</option>
                         <option value="dfs" data-i18n="algo_dfs">🌀 DFS (深度)</option>
-                        <option value="astar" data-i18n="algo_astar">⭐ A*</option>
-                        <option value="dijkstra" data-i18n="algo_dijkstra">🔍 Dijkstra</option>
+
+                        <option value="bfs" data-i18n="algo_bfs">📡 BFS (廣度)</option>
+
+                        <option value="flood" data-i18n="algo_flood">🌊 洪水</option>
+
                         <option value="manhattan" data-i18n="algo_manhattan">🚀 曼哈頓</option>
+
+                        <option value="dijkstra" data-i18n="algo_dijkstra">🔍 Dijkstra</option>
+                        
+                        <option value="astar" data-i18n="algo_astar">⭐ A*</option>
+
                         <option value="left" data-i18n="algo_left">⬅️ 左手</option>
+
                         <option value="right" data-i18n="algo_right">➡️ 右手</option>
                     </select>
 
